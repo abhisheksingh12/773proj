@@ -26,4 +26,5 @@ fi | \
     preprocess/lower_case.py | \
     preprocess/char_subst.py | \
     preprocess/strip_comma.py | \
+    preprocess/tokenize.py | \
     preprocess/split.py "$output"
