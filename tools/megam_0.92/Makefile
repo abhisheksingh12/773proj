@@ -42,7 +42,7 @@ SOURCES = fastdot_c.c fastdot.ml intHashtbl.ml arry.ml util.ml data.ml bitvec.ml
 # The Caml compilers. #
 # You may fix here the path to access the Caml compiler on your machine
 CAMLC = ocamlc -g
-CAMLOPT = ocamlopt -unsafe -ccopt -O4 -ccopt -ffast-math -inline 99999 
+CAMLOPT = ocamlopt -unsafe -ccopt -O4 -ccopt -ffast-math -inline 99999
 CAMLDEP = ocamldep
 CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
@@ -51,7 +51,7 @@ CAMLYACC = ocamlyacc
 # or if any C code have to be linked with your program
 # (irrelevant for ocamlopt)
 
-CUSTOM=-custom 
+CUSTOM=-custom
 
 # Default setting of the WITH* variables. Should be changed if your
 # local libraries are not found by the compiler.
@@ -59,7 +59,7 @@ WITHGRAPHICS =graphics.cma -cclib -lgraphics -cclib -L/usr/X11R6/lib -cclib -lX1
 
 WITHUNIX =unix.cma -cclib -lunix
 
-WITHSTR =str.cma -cclib -lstr
+WITHSTR =str.cma -cclib -lcamlstr
 
 WITHBIGARRAY =bigarray.cma -cclib -lbigarray
 
@@ -70,7 +70,8 @@ WITHTHREADS =threads.cma -cclib -lthreads
 WITHDBM =dbm.cma -cclib -lmldbm -cclib -lndbm
 
 #WITHCLIBS =-I /usr/lib/ocaml/3.09.2/caml
-WITHCLIBS =-I /usr/lib/ocaml/caml
+#WITHCLIBS =-I /usr/lib/ocaml/caml
+WITHCLIBS =-I /usr/local/Cellar/objective-caml/3.12.0/lib/ocaml/caml
 
 ################ End of user's variables #####################
 
@@ -146,6 +147,8 @@ clean:
 	rm -f *.cm[iox] *~ .*~ #*#
 	rm -f $(EXEC)
 	rm -f $(EXEC).opt
+	rm -f *.o
+	rm -f .depend
 
 .depend: $(SOURCES2)
 	$(CAMLDEP) *.mli *.ml > .depend
