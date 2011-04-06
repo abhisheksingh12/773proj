@@ -1,1 +1,6 @@
 *.pyc
+data
+split
+train*
+dev*
+test*
