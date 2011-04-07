@@ -1,10 +1,10 @@
 """Feature writers for various tools. All writers share the same
 parameter interface: (docs, fo).
 
-`docs` is a list of documents where each document is represented by a
-list of (label, feats) pair. `label` must be an integer; values in
-`feats` will be output as a string with all whitespaces replaces with
-_.
+`docs` is an iterable of documents where each document is represented
+by an iterable of (label, feats) pair. `label` must be an integer;
+values in `feats` will be output as a string with all whitespaces
+replaces with _.
 
 `fo` is the output file object.
 """
