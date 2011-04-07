@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title xmlns="http://www.w3.org/1999/xhtml">CRFsuite - Documentation</title>
+    <link xmlns="http://www.w3.org/1999/xhtml" rel="stylesheet" href="http://www.chokkan.org/chokkan.css" type="text/css" />
+    <meta xmlns="http://www.w3.org/1999/xhtml" name="generator" content="DocBook XSL Stylesheets V1.69.1" />
+    <meta xmlns="http://www.w3.org/1999/xhtml" name="keywords" content="CRFsuite, Conditional Random Fields, CRF, C, fast implementation" />
+  </head>
+  <body>
+    <div class="body">
+      <div id="sitelogo_background">
+        <p id="sitelogo">
+          <a href="http://www.chokkan.org/">Naoaki Okazaki's website</a>
+        </p>
+      </div>
+      <div id="topmenu">
+        <ul>
+          <li>
+            <a href="http://www.chokkan.org/index.shtml.en">Home</a>
+          </li>
+          <li>
+            <a href="http://www.chokkan.org/cv.html.en">CV</a>
+          </li>
+          <li>
+            <a href="http://www.chokkan.org/research/index.html.en">Research</a>
+          </li>
+          <li>
+            <a href="http://www.chokkan.org/publication.html.en">Publication</a>
+          </li>
+          <li>
+            <a href="http://www.chokkan.org/software/index.html.en">Software</a>
+          </li>
+          <li>
+            <a href="http://www.chokkan.org/blog/">Blog</a>
+          </li>
+          <li>
+            <a href="http://www.chokkan.org/software/crfsuite/manual.html.ja">Japanese</a>
+          </li>
+        </ul>
+      </div>
+      <div id="content">
+        <div xmlns="http://www.w3.org/1999/xhtml" class="article" lang="en" xml:lang="en">
+          <div class="titlepage">
+            <div>
+              <div>
+                <h1 class="title"><a id="id4755384"></a>CRFsuite - Documentation</h1>
+              </div>
+            </div>
+          </div>
+          <div class="toc">
+            <p>
+              <b>Table of Contents</b>
+            </p>
+            <dl>
+              <dt>
+                <span class="sect1">
+                  <a href="#id4755430">Installation</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="#id4755435">Using a binary distribution</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="#id4755344">Building from a source distribution</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="#id4719468">Usage</a>
+                </span>
+              </dt>
+              <dd>
+                <dl>
+                  <dt>
+                    <span class="sect2">
+                      <a href="#id4719546">Training</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="#id4720061">Tagging</a>
+                    </span>
+                  </dt>
+                  <dt>
+                    <span class="sect2">
+                      <a href="#id4720257">Model dump</a>
+                    </span>
+                  </dt>
+                </dl>
+              </dd>
+              <dt>
+                <span class="sect1">
+                  <a href="#id4720278">Format of training/tagging data</a>
+                </span>
+              </dt>
+            </dl>
+          </div>
+          <div class="sect1" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h2 class="title" style="clear: both"><a id="id4755430"></a>Installation</h2>
+                </div>
+              </div>
+            </div>
+            <div class="sect2" lang="en" xml:lang="en">
+              <div class="titlepage">
+                <div>
+                  <div>
+                    <h3 class="title"><a id="id4755435"></a>Using a binary distribution</h3>
+                  </div>
+                </div>
+              </div>
+              <p>
+The easiest way for installing CRFsuite is to use a binary distribution. Currently, binaries for Win32 and Linux (Intel 32bit and 64bit architectures) are distributed.
+</p>
+            </div>
+            <div class="sect2" lang="en" xml:lang="en">
+              <div class="titlepage">
+                <div>
+                  <div>
+                    <h3 class="title"><a id="id4755344"></a>Building from a source distribution</h3>
+                  </div>
+                </div>
+              </div>
+              <p>
+As of CRFsuite 0.5, the source package no longer include the portion of <a href="http://www.chokkan.org/software/liblbfgs/" target="_top">libLBFGS</a>.
+In order to build CRFsuite, you need to download and build <a href="http://www.chokkan.org/software/liblbfgs/" target="_top">libLBFGS</a> first.
+</p>
+              <p>
+In Windows environments, open the Visual Studio solution file (<code class="filename">lbfgs.sln</code>) of libLBFGS, and build it. The solution file builds a static-link library, <code class="filename">lbfgs.lib</code> (release build) or <code class="filename">lbfgs_debug.lib</code> (debug build), at <code class="filename">Release</code> or <code class="filename">Debug</code> directory.
+Because the solution file (<code class="filename">crfsuite.sln</code>) of CRFsuite assumes that the header and library files of libLBFGS exist in <code class="filename">win32/lbfgs</code> directory, create this directory, and copy <code class="filename">lbfgs.h</code>, <code class="filename">lbfgs.lib</code> and/or <code class="filename">lbfgs_debug.lib</code> into the directory.
+Then open the solution file (<code class="filename">crfsuite.sln</code>) and build it.
+</p>
+              <p>
+In Linux environments, download the source package of libLBFGS, and build it.
+If you do not want to install libLBFGS into your operating system, specify "--prefix" option to the configure script.
+</p>
+              <pre class="screen">
+$ ./configure [--prefix=/path/to/a/temporary/directory]
+$ make
+$ make install
+</pre>
+              <p>
+Now you are ready to build CRFsuite.
+If you have libLFGS installed to a different directory, please specify the directory in the argument of "--with-liblbfgs" option.
+</p>
+              <pre class="screen">
+$ ./configure [--with-liblbfgs=/path/to/a/temporary/directory]
+$ make
+$ make install
+</pre>
+            </div>
+          </div>
+          <div class="sect1" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h2 class="title" style="clear: both"><a id="id4719468"></a>Usage</h2>
+                </div>
+              </div>
+            </div>
+            <p>
+CRFsuite utility expects the first command-line argument to be a command name:
+</p>
+            <div class="variablelist">
+              <dl>
+                <dt>
+                  <span class="term">learn</span>
+                </dt>
+                <dd>Train a CRF model from a training set.</dd>
+                <dt>
+                  <span class="term">tag</span>
+                </dt>
+                <dd>Tag sequences using a CRF model.</dd>
+                <dt>
+                  <span class="term">dump</span>
+                </dt>
+                <dd>Dump a CRF model in plain-text format.</dd>
+              </dl>
+            </div>
+            <p>
+To see the command-line options, use -h (--help) option.
+</p>
+            <pre class="screen">
+$ crfsuite -h
+CRFsuite 0.10  Copyright (c) 2007-2010 Naoaki Okazaki
+
+USAGE: crfsuite &lt;COMMAND&gt; [OPTIONS]
+    COMMAND     Command name to specify the processing
+    OPTIONS     Arguments for the command (optional; command-specific)
+
+COMMAND:
+    learn       Obtain a model from a training set of instances
+    tag         Assign suitable labels to given instances by using a model
+    dump        Output a model in a plain-text format
+
+For the usage of each command, specify -h option in the command argument.
+</pre>
+            <div class="sect2" lang="en" xml:lang="en">
+              <div class="titlepage">
+                <div>
+                  <div>
+                    <h3 class="title"><a id="id4719546"></a>Training</h3>
+                  </div>
+                </div>
+              </div>
+              <p>
+To train a CRF model from a training set, enter the following command,
+</p>
+              <pre class="screen">
+$ crfsuite learn [OPTIONS] [DATA]
+</pre>
+              <p>
+If the argument DATA is omitted or '-', this utility reads a training data from STDIN.
+To see the usage of learn command, specify -h (--help) option.
+</p>
+              <pre class="screen">
+$ crfsuite learn -h
+CRFsuite 0.10  Copyright (c) 2007-2010 Naoaki Okazaki
+
+USAGE: crfsuite learn [OPTIONS] [DATA]
+Obtain a model from a training set of instances given by a file (DATA).
+If argument DATA is omitted or '-', this utility reads a data from STDIN.
+
+OPTIONS:
+    -m, --model=MODEL   Store the obtained model in a file (MODEL)
+    -t, --test=TEST     Report the performance of the model on a data (TEST)
+    -p, --param=NAME=VALUE  Set the parameter NAME to VALUE
+    -h, --help          Show the usage of this command and exit
+</pre>
+              <p>
+The following options are available for training.
+</p>
+              <div class="variablelist">
+                <dl>
+                  <dt>
+                    <span class="term">-m, --model=MODEL</span>
+                  </dt>
+                  <dd>A filename to which CRFsuite stores an obtained CRF model. The default value is "crfsuite.model".</dd>
+                  <dt>
+                    <span class="term">-t, --test=TEST</span>
+                  </dt>
+                  <dd>A filename of a test data for holdout evaluation during a training. With this option specified, CRFsuite evaluates the current CRF model on the holdout data and report the performance.</dd>
+                  <dt>
+                    <span class="term">-p, --param=NAME=VALUE</span>
+                  </dt>
+                  <dd>
+		Configure a parameter for the training. CRFsuite sets the parameter (NAME) to VALUE. Available parameters are:
+
+		<div class="variablelist"><dl><dt><span class="term">algorithm=ALGORITHM</span></dt><dd>Use ALGORITHM for training. Currently, CRFsuite supports "lbfgs" (L-BFGS) and "sgd" (SGD). The default value is "lbfgs".</dd><dt><span class="term">feature.minfreq=VALUE</span></dt><dd>Cut-off threshold for occurrence frequency of a feature. CRFsuite will ignore features whose frequencies of occurrences in the training data are no greater than VALUE. The default value is 0 (i.e., no cut-off).</dd><dt><span class="term">feature.possible_states=BOOL</span></dt><dd>Specify whether CRFsuite generates state features that do not even occur in the training data (i.e., negative state features). Setting BOOL to 1, CRFsuite generates state features that associate all of possible combinations between attributes and labels. Suppose that the numbers of attributes and labels are A and L respectively, this function will generate (A * L) features. Enabling this function may improve the labeling accuracy because the CRF model can learn the condition where an item was not labeled to certain labels under the existence of specific attributes. However, this function may also increase the number of features and slow down the training process drastically. This function is disabled by default.</dd><dt><span class="term">feature.possible_transitions=BOOL</span></dt><dd>Specify whether CRFsuite generates transition features that do not even occur in the training data (i.e., negative transition features). Setting BOOL to 1, CRFsuite generates transition features that associate all of possible label pairs. Suppose that the number of labels in the training data is L, this function will generate (L * L) transition features. This function is disabled by default.</dd><dt><span class="term">feature.bos_eos=BOOL</span></dt><dd>Specify whether CRFsuite generates begin-of-sequence (BOS) and end-of-sequence (EOS) features. Setting BOOL to 1, CRFsuite generates transition features that describes the event where a sequence begins or ends with specific labels. This function is enabled by default.</dd><dt><span class="term">regularization=TYPE</span></dt><dd>The type of regularization: "L1" (L1 regularization, Laplacian prior), "L2" (L2 regularization, Gaussian prior), or "" (no regularization). The default value is "L2". SGD does not support L1 regularization at this moment.</dd><dt><span class="term">regularization.sigma=VALUE</span></dt><dd>The regularization parameter sigma, i.e., variance of feature weights. The default value is 10.</dd><dt><span class="term">lbfgs.max_iterations=VALUE</span></dt><dd>The maximum number of iterations for L-BFGS optimization. The L-BFGS routine terminates if the iteration count exceeds this value. The default value is set to the maximum value of integer on the machine (INT_MAX).</dd><dt><span class="term">lbfgs.epsilon=VALUE</span></dt><dd>The epsilon parameter that determines the condition of convergence. The default value is 1e-5.</dd><dt><span class="term">lbfgs.stop=VALUE</span></dt><dd>The duration of iterations to test the stopping criterion. The default value is 10.</dd><dt><span class="term">lbfgs.delta=VALUE</span></dt><dd>The threshold for the stopping criterion; an L-BFGS iteration stops when the improvement of the log likelihood over the last ${lbfgs.stop} iterations is no greater than this threshold. The default value is 1e-5.</dd><dt><span class="term">llbfgs.num_memories=VALUE</span></dt><dd>The number of limited memories that L-BFGS uses for approximating the inverse hessian matrix. The default value is 6.</dd><dt><span class="term">lbfgs.linesearch=METHOD</span></dt><dd>The line search method in the L-BFGS algorithm. The possible methods are: "MoreThuente" (MoreThuente method proposd by More and Thuente), "	Backtracking" (Backtracking method with strong Wolfe condition), "LooseBacktracking" (Backtracking method with regular Wolfe condition). The default method is "MoreThuente".</dd><dt><span class="term">lbfgs.linesearch.max_iterations=NUM</span></dt><dd>The maximum number of trials for the line search algorithm. The default value is 20.</dd><dt><span class="term">sgd.max_iterations=VALUE</span></dt><dd>The maximum number of iterations (epochs) for SGD. The SGD routine terminates if the iteration count exceeds this value. The default value is 1000.</dd><dt><span class="term">sgd.period=VALUE</span></dt><dd>The duration of iterations to test the stopping criterion. The default value is 10.</dd><dt><span class="term">sgd.delta=VALUE</span></dt><dd>The threshold for the stopping criterion; an SGD iteration stops when the improvement of the log likelihood over the last ${sgd.period} iterations is no greater than this threshold. The default value is 1e-6.</dd><dt><span class="term">sgd.calibration.eta=VALUE</span></dt><dd>The initial value of learning rate (eta) used for calibration. The default value is 0.1.</dd><dt><span class="term">sgd.calibration.rate=VALUE</span></dt><dd>The rate of increase/decrease of learning rate for calibration. The default value is 2.</dd><dt><span class="term">sgd.calibration.samples=VALUE</span></dt><dd>The number of instances used for calibration. The calibration routine randomly chooses instances no larger than VALUE. The default value is 1000.</dd><dt><span class="term">sgd.calibration.candidates=VALUE</span></dt><dd>The number of candidates of learning rate. The calibration routine tries VALUE candidates of learning rates that can increase log-likelihood.</dd></dl></div></dd>
+                  <dt>
+                    <span class="term">-h, --help</span>
+                  </dt>
+                  <dd>Show the usage of this command and exit.</dd>
+                </dl>
+              </div>
+              <p>
+</p>
+              <p>
+Here are some examples of CRFsuite command-lines for training.
+</p>
+              <div class="variablelist">
+                <dl>
+                  <dt>
+                    <span class="term">Train a CRF model from <code class="filename">train.txt</code> with the default parameters.</span>
+                  </dt>
+                  <dd>
+                    <pre class="screen">
+$ crfsuite learn train.txt
+</pre>
+                  </dd>
+                  <dt>
+                    <span class="term">Train a CRF model from <code class="filename">train.txt</code> and store the model to <code class="filename">CRF.model</code>. During the trainig, test the model with a holdout data <code class="filename">test.txt</code>.</span>
+                  </dt>
+                  <dd>
+                    <pre class="screen">
+$ crfsuite learn -m CRF.model -t test.txt train.txt
+</pre>
+                  </dd>
+                  <dt>
+                    <span class="term">Train a CRF model from <code class="filename">train.txt</code> by using SGD with L2 regularization (sigma=1).</span>
+                  </dt>
+                  <dd>
+                    <pre class="screen">
+$ crfsuite learn -p algorithm=sgd -p regularization.sigma=1 train.txt
+</pre>
+                  </dd>
+                  <dt>
+                    <span class="term">Train a CRF model from <code class="filename">train.txt</code> with L1 regularization (sigma=1).</span>
+                  </dt>
+                  <dd>
+                    <pre class="screen">
+$ crfsuite learn -p regularization=L1 -p regularization.sigma=1 train.txt
+</pre>
+                  </dd>
+                  <dt>
+                    <span class="term">Train a CRF model from <code class="filename">train.txt</code>, generating all of possible features.</span>
+                  </dt>
+                  <dd>
+                    <pre class="screen">
+$ crfsuite learn -p feature.possible_states=1 -p feature.possible_transitions=1 
+train.txt
+</pre>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+            <div class="sect2" lang="en" xml:lang="en">
+              <div class="titlepage">
+                <div>
+                  <div>
+                    <h3 class="title"><a id="id4720061"></a>Tagging</h3>
+                  </div>
+                </div>
+              </div>
+              <p>
+To tag a data using a CRF model, enter the following command, 
+</p>
+              <pre class="screen">
+$ crfsuite tag [OPTIONS] [DATA]
+</pre>
+              <p>
+If the argument DATA is omitted or '-', CRFsuite reads a data from STDIN.To see the usage of tag command, specify -h (--help) option.
+</p>
+              <pre class="screen">
+$ crfsuite tag -h
+CRFsuite 0.10  Copyright (c) 2007-2010 Naoaki Okazaki
+
+USAGE: crfsuite tag [OPTIONS] [DATA]
+Assign suitable labels to the instances in the data set given by a file (DATA).
+If the argument DATA is omitted or '-', this utility reads a data from STDIN.
+Evaluate the performance of the model on labeled instances (with -t option).
+
+OPTIONS:
+    -m, --model=MODEL   Read a model from a file (MODEL)
+    -t, --test          Report the performance of the model on the data
+    -r, --reference     Output the reference labels in the input data
+    -q, --quiet         Suppress tagging results (useful for test mode)
+    -h, --help          Show the usage of this command and exit
+</pre>
+              <p>
+The following options are available for tagging.
+</p>
+              <div class="variablelist">
+                <dl>
+                  <dt>
+                    <span class="term">-m, --model=MODEL</span>
+                  </dt>
+                  <dd>A filename from which CRFsuite reads a CRF model. The default value is "crfsuite.model".</dd>
+                  <dt>
+                    <span class="term">-t, --test</span>
+                  </dt>
+                  <dd>Evaluate the performance (accuracy, precision, recall, f1 measure) of the CRF model, assuming that the input data is labeled. This function is disabled by default.</dd>
+                  <dt>
+                    <span class="term">-r, --reference</span>
+                  </dt>
+                  <dd>Output the reference labels in parallel with predicted labels, assuming that the input data is labeled. This function is disabled by default.</dd>
+                  <dt>
+                    <span class="term">-q, --quiet</span>
+                  </dt>
+                  <dd>Suppress the output of tagged labels. This function is useful for evaluating a CRF model with -t option.</dd>
+                  <dt>
+                    <span class="term">-h, --help</span>
+                  </dt>
+                  <dd>Show the usage of this command and exit.</dd>
+                </dl>
+              </div>
+              <p>
+</p>
+              <p>
+Here are some examples of CRFsuite command-lines for tagging.
+</p>
+              <div class="variablelist">
+                <dl>
+                  <dt>
+                    <span class="term">Tag a data <code class="filename">test.txt</code> using a CRF model <code class="filename">CRF.model</code></span>
+                  </dt>
+                  <dd>
+                    <pre class="screen">
+$ crfsuite tag -m CRF.model test.txt
+</pre>
+                  </dd>
+                  <dt>
+                    <span class="term">Evaluate a CRF model <code class="filename">CRF.model</code> on the labeled data <code class="filename">test.txt</code>.</span>
+                  </dt>
+                  <dd>
+                    <pre class="screen">
+$ crfsuite tag -m CRF.model -qt test.txt
+</pre>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+            <div class="sect2" lang="en" xml:lang="en">
+              <div class="titlepage">
+                <div>
+                  <div>
+                    <h3 class="title"><a id="id4720257"></a>Model dump</h3>
+                  </div>
+                </div>
+              </div>
+              <p>
+To dump a CRF model in plain-text format, enter the following command, 
+</p>
+              <pre class="screen">
+$ crfsuite dump &lt;MODEL&gt;
+</pre>
+              <p>
+</p>
+            </div>
+          </div>
+          <div class="sect1" lang="en" xml:lang="en">
+            <div class="titlepage">
+              <div>
+                <div>
+                  <h2 class="title" style="clear: both"><a id="id4720278"></a>Format of training/tagging data</h2>
+                </div>
+              </div>
+            </div>
+            <p>
+CRFsuite accepts text files in a specific format as training and untagged data.
+A <em class="firstterm">data</em> consists of a set of <em class="firstterm">sequences</em> each of which is represented by consecutive lines and terminated by an empty line.
+A sequence consists of a series of <em class="firstterm">items</em> whose characteristics are described in lines.
+An item line begins with its <em class="firstterm">label</em>, followed by its <em class="firstterm">attributes</em> separated by tab characters.
+An attribute specifies an attribute name and its value separated by colon character (':').
+An attribute name can include escape sequences; "\:" and "\\" represent ':' and '\', respectively.
+If an attribute value is omitted (without colon character), CRFsuite assumes the attribute value to be one.
+A line starting with sharp character ('#') is ignored as a comment.
+Label fields are required for both training and untagged data.
+CRFsuite ignores label fields in the input data when tagging.
+</p>
+            <p>
+This is the BNF notation representing the data format.
+</p>
+            <pre class="programlisting">
+&lt;line&gt;           ::= &lt;comment&gt; | &lt;item&gt; | &lt;eos&gt;
+&lt;comment&gt;        ::= '#' &lt;character&gt;+ &lt;br&gt;
+&lt;item&gt;           ::= &lt;label&gt; ('\t' &lt;feature&gt;)+ &lt;br&gt;
+&lt;eos&gt;            ::= &lt;br&gt;
+&lt;label&gt;          ::= &lt;string&gt;
+&lt;feature&gt;        ::= &lt;name&gt; | &lt;name&gt; ':' &lt;weight&gt;
+&lt;name&gt;           ::= (&lt;letter&gt; | "\:" | "\\")+
+&lt;weight&gt;         ::= &lt;numeric&gt;
+&lt;br&gt;             ::= '\n'
+</pre>
+          </div>
+        </div>
+      </div>
+      <div class="footer">
+        <p class="footer">
+	Copyright (c) 2002-2009 by Naoaki Okazaki
+	<br /><i>Fri, 29 Jan 2010 23:19:20 +0900</i></p>
+      </div>
+    </div>
+  </body>
+</html>
