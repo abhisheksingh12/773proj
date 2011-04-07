@@ -9,6 +9,8 @@ def clean_tag(t):
     t = re.sub(' ', '', t.upper())
     if t == 'P!':
         return 'P1'
+    elif t == 'ESbr':
+        return 'SBE'
     return t
 
 def collect_by_dyads(lines):
