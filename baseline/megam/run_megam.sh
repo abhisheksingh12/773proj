@@ -3,7 +3,7 @@
 export PATH="`pwd`/../../tools:$PATH"
 
 # prepare input
-tmp="megam-run"
+tmp="megam.run"
 cp train.megam "$tmp"
 echo "DEV" >> "$tmp"
 cat dev.megam >> "$tmp"
