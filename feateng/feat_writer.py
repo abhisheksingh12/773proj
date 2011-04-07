@@ -16,6 +16,9 @@ import re
 def replace_white_space(s):
     return re.sub(r'\s', '_', s)
 
+def escape_colon(s):
+    return re.sub(r':', r'\:', re.sub(r'\\', r'\\', s))
+
 def megam_writer(docs, fo):
     for data in docs:
         for (label, feats) in data:
@@ -28,7 +31,7 @@ def crfsuite_writer(docs, fo):
     for data in docs:
         for (label, feats) in data:
             fo.write(str(label) + '\t' +
-                     '\t'.join(('F_' + replace_white_space(str(i)) for i in feats)) +
+                     '\t'.join(('F_' + escape_colon(replace_white_space(str(i))) for i in feats)) +
                      '\n')
         # mark document boundary
         fo.write('\n')
