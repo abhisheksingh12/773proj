@@ -1,4 +1,4 @@
-__ALL__ = ["group_by", "lazy_load_dyads", "write_dyads"]
+__ALL__ = ["group_by", "lazy_load_dyads", "write_dyads", "IncrCounter"]
 
 def group_by(items, key):
     """Group and yield sorted items by key
@@ -33,3 +33,16 @@ def lazy_load_dyads(lines):
 def write_dyads(items, fo):
     for (dyad, role, code, unit) in items:
         fo.write('\t'.join(map(str, (dyad, '_', role, code, unit))) + '\n')
+
+
+class IncrCounter:
+    def __init__(self):
+        self.map = {}
+
+    def __call__(self, obj):
+        try:
+            r = self.map[obj]
+        except KeyError:
+            r = len(self.map)
+            self.map[obj] = r
+        return r
