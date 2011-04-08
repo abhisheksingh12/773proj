@@ -2,6 +2,7 @@
 """Baseline features: bag of words witin a small window and current speaker"""
 
 import sys
+import cPickle
 
 import feat_writer
 import common
@@ -52,18 +53,23 @@ if __name__ == '__main__':
         which = sys.argv[1]
         writer = {'megam': feat_writer.megam_writer,
                   'crfsuite': feat_writer.crfsuite_writer}[which]
-        train_in, dev_in, test_in = sys.argv[2:5]
+        out_dir = sys.argv[2]
+        train_in, dev_in, test_in = sys.argv[3:6]
 
         sys.argv.extend(["1", "1"])
-        window_back = int(sys.argv[5])
-        window_forward = int(sys.argv[6])
+        window_back = int(sys.argv[6])
+        window_forward = int(sys.argv[7])
     except:
-        print 'Usage: {} which(=megam|crfsuite) train dev test [window_back=1 window_forward=1]'.format(sys.argv[0])
+        print 'Usage: {} which(=megam|crfsuite) out_dir train dev test [window_back=1 window_forward=1]'.format(sys.argv[0])
         exit(1)
 
-    for path in [train_in, dev_in, test_in]:
+    for (purpose, path) in zip(["train", "dev", "test"], [train_in, dev_in, test_in]):
         with open(path) as fi:
-            with open(path + '.' + which, 'w') as fo:
+            with open(out_dir + '/' + purpose + '.' + which, 'w') as fo:
                 writer(iter_features(common.lazy_load_dyads(fi),
                                      window_back, window_forward),
                        fo)
+
+    with open(out_dir + '/' + 'map.' + which, 'w') as f:
+        cPickle.dump(LABEL_ID, f)
+
