@@ -13,17 +13,17 @@ export PYTHONPATH=$PROJ_PATH:$PYTHONPATH
 1. Assuming $ORIG is the original csv data, run this to get clean
    splitted data:
 
-   #+BEGIN_SRC sh
-   sh clean.sh $ORIG split
-   #+END_SRC
+#+BEGIN_SRC sh
+sh clean.sh $ORIG split
+#+END_SRC
 
 2. Now you should have a `split' directory where there are a couple of
    number-named files. Run this to get randomly merged
    training/dev/test data:
 
-   #+BEGIN_SRC sh
-   preprocess/tr_de_te.py 3 1 1 . split/*
-   #+END_SRC
+#+BEGIN_SRC sh
+preprocess/tr_de_te.py 3 1 1 . split/*
+#+END_SRC
 
 * Generating features
 Use scripts under `feateng' to generate features.
