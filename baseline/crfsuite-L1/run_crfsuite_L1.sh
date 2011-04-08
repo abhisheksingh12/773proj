@@ -2,8 +2,8 @@
 
 export PATH="`pwd`/../../tools:$PATH"
 
-declare -i lambda=128
 declare -i max_accuracy=0
+max_lambda=UNKNOWN
 
 echo "LAMBDA CORRECT" > crf-L1.log
 

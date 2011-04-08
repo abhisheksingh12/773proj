@@ -3,7 +3,7 @@
 export PATH="`pwd`/../../tools:$PATH"
 
 declare -i max_accuracy=0
-declare -i max_lambda=UNKNOWN
+max_lambda=UNKNOWN
 
 echo "LAMBDA CORRECT" > crf.log
 
