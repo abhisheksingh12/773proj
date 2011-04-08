@@ -5,11 +5,13 @@ import cPickle
 import sys
 
 try:
-    with open(sys.argv[1]) as f:
-        label_map = cPickle.load(f)
+    sys.argv[1]
 except:
     print >> sys.stderr, "Usage: {} label_map < in > out".format(sys.argv[0])
     exit(1)
+
+with open(sys.argv[1]) as f:
+    label_map = cPickle.load(f)
 
 for line in sys.stdin:
     line = line.strip()
