@@ -12,10 +12,10 @@ def output_lines(docs, how_many, fo):
 
 try:
     tr, de, te = map(float, sys.argv[1:4])
-    out_prefix = sys.argv[4]
+    out_dir = sys.argv[4]
     files = sys.argv[5:]
 except:
-    print 'Usage: {} tr_weight de_weight te_weight out_prefix files'.format(sys.argv[0])
+    print 'Usage: {} tr_weight de_weight te_weight out_dir files'.format(sys.argv[0])
     exit(1)
 
 docs = []
@@ -29,5 +29,5 @@ tr_de_te = tr + de + te
 
 for (part, prop) in zip(['train', 'dev', 'test'], [tr, de, te]):
     num_lines = prop / tr_de_te * total_lines
-    with open(out_prefix + '.' + part, 'w') as f:
+    with open(out_dir + '/' + part, 'w') as f:
         output_lines(docs, num_lines, f)
