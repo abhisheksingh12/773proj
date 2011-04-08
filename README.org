@@ -1,0 +1,54 @@
+* Building necessary tools
+See instructions in tools/BUILDING.
+
+* Setting up PYTHONPATH
+Add the project directory to your PYTHONPATH so that everyone knows
+which common.py to import. If you are using bash, do this
+
+#+BEGIN_SRC sh
+export PYTHONPATH=$PROJ_PATH:$PYTHONPATH
+#+END_SRC
+
+* Getting cleaned up data
+1. Assuming $ORIG is the original csv data, run this to get clean
+   splitted data:
+
+   #+BEGIN_SRC sh
+   sh clean.sh $ORIG split
+   #+END_SRC
+
+2. Now you should have a `split' directory where there are a couple of
+   number-named files. Run this to get randomly merged
+   training/dev/test data:
+
+   #+BEGIN_SRC sh
+   preprocess/tr_de_te.py 3 1 1 . split/*
+   #+END_SRC
+
+* Generating features
+Use scripts under `feateng' to generate features.
+
+* Tuning the classifer and testing
+See `baseline/crfsuite/run_crfsuite.sh',
+`baseline/crfsuite-L1/run_crfsuite-L1.sh' and
+`baseline/megam/run_megam.sh' for examples.
+
+* Directory structure
+- common.py : common utilities (possibly) useful to everyone
+- feateng/ : feature engineering stuff
+- preprocess/ : preprocessing stuff (cleaning the data; POS tagging;
+  etc.)
+- tools/ : source code and executables of off-shelf tools
+
+* Data related stuff
+- *NEVER* add any data into the repository (not even to your private
+  branch since you might mistakenly merge them back to master).
+- The top-level .gitignore file tells git to ignore `data' and `split'
+  directory and any file with prefix `train|test|dev'; so if you put
+  data in `data' or call them `train[SOMETHING]', git will help you to
+  prevent adding data into the repository.
+- Also, you should create a .gitignore file for directory that stores
+  testing results (models, logs, etc.). Take a look at
+  baseline/.gitignore for example.
+- Be really careful! run `git ls-files' to see what are in your
+  repository before pushing it to github.
