@@ -1,0 +1,14 @@
+* Building megam
+
+First of all, you need OCaml installed on the system.
+
+To compile megam, open the Makefile, find -lstr, replace it with
+-lcamlstr; find WITHCLIBS, make the include path your actual one (try
+"find YourOcamlDirectory -name bigarray.h").
+
+It's recommended you build with "make opt" to get an optimized
+executable. After building, "mv megam.opt ../megam" and "make clean".
+
+* Building crfsuite
+
+Just run crfsuite.build.sh under `tools' directory.

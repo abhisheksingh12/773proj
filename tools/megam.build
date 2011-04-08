@@ -1,3 +1,0 @@
-To compile megam, open the Makefile, find -lstr, replace it with
--lcamlstr; find WITHCLIBS, make the include path your actual one (try
-"find OcamlDirectory -name bigarray.h").
