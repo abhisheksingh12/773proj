@@ -51,10 +51,14 @@ def write_dyads(items, fo):
 
 class IncrCounter:
     """An increment counter that assigns numbers to things (that is
-    hashable).
+    hashable and *immutable*).
+
+    Use counter(obj) to get a number and counter[number] to get the
+    obj.
     """
     def __init__(self):
         self.map = {}
+        self.rev_map = {}
 
     def __call__(self, obj):
         try:
@@ -62,4 +66,8 @@ class IncrCounter:
         except KeyError:
             r = len(self.map)
             self.map[obj] = r
+            self.rev_map[r] = obj
         return r
+
+    def __getitem__(self, anInteger):
+        return self.rev_map[anInteger]
