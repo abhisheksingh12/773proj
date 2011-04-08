@@ -14,3 +14,9 @@ cat test.megam >> "$tmp"
 megam -maxi 500 -lambda 100 -tune multiclass "$tmp" > "$tmp.weights"
 # testing
 megam -predict "$tmp.weights" multiclass test.megam | grep -oE '^[0-9]+' > "$tmp.out"
+
+# evaluation
+../../feateng/num_to_code.py map.megam < test.megam > test.labels
+../../feateng/num_to_code.py map.megam < megam.run.out > megam.run.out.labels
+../../eval/accuracy.py test.labels megam.run.out.labels > megam.run.eval
+../../eval/conf_mat.py test.labels megam.run.out.labels > megam.run.csv

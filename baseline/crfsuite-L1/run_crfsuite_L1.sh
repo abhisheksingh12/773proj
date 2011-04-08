@@ -22,3 +22,9 @@ echo "Using $max_lambda" | tee -a crf-L1.log
 
 crfsuite tag -m crf-L1.model.$max_lambda test.crfsuite > crf-L1.out 2> /dev/null
 crfsuite tag -qt -m crf-L1.model.$max_lambda test.crfsuite > crf-L1.test 2> /dev/null
+
+# evaluation
+../../feateng/num_to_code.py map.crfsuite < test.crfsuite > test.labels
+../../feateng/num_to_code.py map.crfsuite < crf-L1.out > crf-L1.out.labels
+../../eval/accuracy.py test.labels crf-L1.out.labels > crf-L1.eval
+../../eval/conf_mat.py test.labels crf-L1.out.labels > crf-L1.run.csv
