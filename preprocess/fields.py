@@ -81,7 +81,7 @@ def collect_by_speaker(lines):
                 else:
                     by_speakers.append((speaker, [(lineno, line)]))
 
-            speaker = sp[1]
+            speaker = 'Grocery' if sp[1].lower() == 'g' else 'Wine'
             line = sp[2]
             if not by_speakers:
                 by_speakers.append((speaker, [(lineno, line)]))
