@@ -20,3 +20,8 @@ megam -predict "$tmp.weights" multiclass test.megam | ../../eval/megam_kbest.py 
 ../../feateng/num_to_code.py map.megam < megam.run.out > megam.run.out.labels
 ../../eval/accuracy.py test.labels megam.run.out.labels > megam.run.eval
 ../../eval/conf_mat.py test.labels megam.run.out.labels > megam.run.csv
+
+# k-best evaluation
+for k in `seq 36`; do
+    ../../eval/accuracy.py test.megam megam.run.out $k | grep Overall
+done | grep -oE '[0-9]+\.[0-9]+' | cat -n > megam.run.kbest
