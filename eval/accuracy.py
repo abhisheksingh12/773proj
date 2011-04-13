@@ -29,5 +29,8 @@ for (r, a) in zip(ref_vals, ans_vals):
     per_tag_corret[r] += r in a
 
 for t in sorted(set(ref_vals).union(reduce(set.union, ans_vals))):
-    print '{}: {} / {} = {:.2f}%'.format(t, per_tag_corret[t], per_tag_total[t],
-                                         per_tag_corret[t] * 100. / per_tag_total[t])
+    try:
+        print '{}: {} / {} = {:.2f}%'.format(t, per_tag_corret[t], per_tag_total[t],
+                                             per_tag_corret[t] * 100. / per_tag_total[t])
+    except ZeroDivisionError:
+        print '{}: - / - = -'.format(t)
