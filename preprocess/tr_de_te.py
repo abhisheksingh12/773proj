@@ -29,5 +29,8 @@ tr_de_te = tr + de + te
 
 for (part, prop) in zip(['train', 'dev', 'test'], [tr, de, te]):
     num_lines = prop / tr_de_te * total_lines
+    print out_dir + '/' + part
     with open(out_dir + '/' + part, 'w') as f:
         output_lines(docs, num_lines, f)
+
+print "Done."
