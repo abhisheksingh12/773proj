@@ -109,6 +109,8 @@ if __name__ == "__main__":
         
         pickle_f = sys.argv[1]
         toTrain = sys.argv[2]
+        toTrain = {'True': True,
+                  'False': False}[sys.argv[2]]
 
         if len(sys.argv) == 5:
             resource = sys.argv[3]
@@ -128,7 +130,8 @@ if __name__ == "__main__":
         sys.stdout.write(str)
 
     except:
-        print ('Usage: pickle_path train (True|False) path_to_LIWC_resource word')
+        print ('Usage: pickle_path True path_to_LIWC_resource word \nor\n'+\
+               'Usage: pickle_path False word \n')
         print '-'*60
         traceback.print_exc(file=sys.stdout)
         print '-'*60
