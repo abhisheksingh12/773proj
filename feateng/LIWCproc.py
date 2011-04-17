@@ -3,8 +3,8 @@ import re,pickle,sys,traceback
 
 class LIWCproc:
     
-    def __init__(self,pathToPickle,train,pathToLIWC):
-        if train:
+    def __init__(self,pathToPickle,readFromFile,pathToLIWC):
+        if readFromFile:
             
             file_h = open(pathToLIWC,'r')
             startState = True
@@ -100,7 +100,7 @@ class LIWCproc:
                 if part_word in word:
                     return self.LIWC["partialMatch"][key]
             
-            return [word]
+            return []
         
         
 if __name__ == "__main__":
@@ -108,19 +108,21 @@ if __name__ == "__main__":
     try:
         
         pickle_f = sys.argv[1]
-        toTrain = sys.argv[2]
-        toTrain = {'True': True,
-                  'False': False}[sys.argv[2]]
+        #readFromFile = sys.argv[2]
+        #readFromFile = {'True': True,
+        #          'False': False}[sys.argv[2]]
 
-        if len(sys.argv) == 5:
-            resource = sys.argv[3]
-            word = sys.argv[4]
-        else:
-            resource = None
+        if len(sys.argv) == 4:
+            readFromFile = True
+            resource = sys.argv[2]
             word = sys.argv[3]
+        else:
+            readFromFile = False
+            resource = None
+            word = sys.argv[2]
             
             
-        ling_res = LIWCproc(pickle_f,toTrain,resource)
+        ling_res = LIWCproc(pickle_f,readFromFile,resource)
         categoryList = ling_res.inquire(word)
         
         str = "%s\t"%word
@@ -130,8 +132,8 @@ if __name__ == "__main__":
         sys.stdout.write(str)
 
     except:
-        print ('Usage: pickle_path True path_to_LIWC_resource word \nor\n'+\
-               'Usage: pickle_path False word \n')
+        print ('Usage: pickle_path path_to_LIWC_resource word \nor\n'+\
+               'Usage: pickle_path word \n')
         print '-'*60
         traceback.print_exc(file=sys.stdout)
         print '-'*60
