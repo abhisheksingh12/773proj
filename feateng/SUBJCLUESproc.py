@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python2.7
 import sys,pickle,traceback
 
 global DEBUG
@@ -72,6 +72,7 @@ class SUBJCLUESproc:
                 
                 final_dict[key][pos]={'type':tmp_dic['type'],'priorpolarity':tmp_dic['priorpolarity']}                
                 del tmp_dic
+                file_h.close()
             self.SUBJCLUES = {'stemmed':stemmedDict,'token':tokenDict}
             pickle.dump(self.SUBJCLUES, open(pathToPickle,"wb"))
         else:

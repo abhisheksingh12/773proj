@@ -78,6 +78,7 @@ class LIWCproc:
                         tmp_dict[parts[0]].append(categoryDict[part])
                         
             del categoryDict
+            file_h.close()
             self.LIWC = {"fullMatch" : fullMatchDict, "partialMatch" : partialMatchDict }    
             pickle.dump(self.LIWC, open(pathToPickle,"wb"))
         else:
