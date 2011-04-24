@@ -4,22 +4,76 @@
 #include <sstream>
 #include <stdexcept>
 #include <iomanip>
-
+#include <map>
 
 using namespace std;
+
+// for map-like sparse_t (where operator[] works)
+
+// sparse_t sparse_from_binary(istream &input, const feat_id_map_t &feat_id_map)
+// {
+// 	string feat_name;
+// 	sparse_t ret;
+// 	while (input >> feat_name) {
+// 		// ignore unknown feature
+// 		auto it = feat_id_map.find(feat_name);
+// 		if (it != feat_id_map.end())
+// 			ret[it->second] = 1;
+// 	}
+// 	// bias
+// 	ret[feat_id_map.find("**BIAS**")->second] = 1;
+// 	return ret;
+// }
+
+// sparse_t sparse_from_real(istream &input, const feat_id_map_t &feat_id_map)
+// {
+// 	string feat_name;
+// 	double value;
+// 	sparse_t ret;
+// 	while (input >> feat_name >> value) {
+// 		// ignore unknown feature
+// 		auto it = feat_id_map.find(feat_name);
+// 		if (it != feat_id_map.end())
+// 			ret[it->second] = value;
+// 	}
+// 	// bias
+// 	ret[feat_id_map.find("**BIAS**")->second] = 1;
+// 	return ret;
+// }
 
 sparse_t sparse_from_binary(istream &input, const feat_id_map_t &feat_id_map)
 {
 	string feat_name;
 	sparse_t ret;
+	map<size_t, size_t> seen_id_idx;
 	while (input >> feat_name) {
 		// ignore unknown feature
 		auto it = feat_id_map.find(feat_name);
-		if (it != feat_id_map.end())
-			ret[it->second] = 1;
+		if (it != feat_id_map.end()) {
+			size_t feat_id = it->second;
+			auto jt =  seen_id_idx.find(feat_id);
+			if (jt == seen_id_idx.end()) {
+				// unseen feat_id
+				seen_id_idx.insert(jt, pair<size_t, size_t>(feat_id, ret.size()));
+				ret.push_back(pair<size_t, double>(feat_id, 1));
+			} else {
+				// duplicate
+				cerr << "Warning: duplicate feature: " << feat_name << endl;
+			}
+		}
 	}
 	// bias
-	ret[feat_id_map.find("**BIAS**")->second] = 1;
+	size_t bias_feat_id = feat_id_map.find("**BIAS**")->second;
+	auto it = seen_id_idx.find(bias_feat_id);
+	if (it == seen_id_idx.end()) {
+		// unseen feat_id
+		seen_id_idx.insert(it, pair<size_t, size_t>(bias_feat_id, ret.size()));
+		ret.push_back(pair<size_t, double>(bias_feat_id, 1));
+	} else {
+		// duplicate
+		cerr << "Warning: duplicate **BIAS**" << endl;
+		ret[it->second].second = 1;
+	}
 	return ret;
 }
 
@@ -28,14 +82,36 @@ sparse_t sparse_from_real(istream &input, const feat_id_map_t &feat_id_map)
 	string feat_name;
 	double value;
 	sparse_t ret;
+	map<size_t, size_t> seen_id_idx;
 	while (input >> feat_name >> value) {
 		// ignore unknown feature
 		auto it = feat_id_map.find(feat_name);
-		if (it != feat_id_map.end())
-			ret[it->second] = value;
+		if (it != feat_id_map.end()) {
+			size_t feat_id = it->second;
+			auto jt =  seen_id_idx.find(feat_id);
+			if (jt == seen_id_idx.end()) {
+				// unseen feat_id
+				seen_id_idx.insert(jt, pair<size_t, size_t>(feat_id, ret.size()));
+				ret.push_back(pair<size_t, double>(feat_id, value));
+			} else {
+				// duplicate
+				cerr << "Warning: duplicate feature: " << feat_name << endl;
+				ret[jt->second].second = value;
+			}
+		}
 	}
 	// bias
-	ret[feat_id_map.find("**BIAS**")->second] = 1;
+	size_t bias_feat_id = feat_id_map.find("**BIAS**")->second;
+	auto it = seen_id_idx.find(bias_feat_id);
+	if (it == seen_id_idx.end()) {
+		// unseen feat_id
+		seen_id_idx.insert(it, pair<size_t, size_t>(bias_feat_id, ret.size()));
+		ret.push_back(pair<size_t, double>(bias_feat_id, 1));
+	} else {
+		// duplicate
+		cerr << "Warning: duplicate **BIAS**" << endl;
+		ret[it->second].second = 1;
+	}
 	return ret;
 }
 
@@ -44,11 +120,28 @@ DataPoint::DataPoint(size_t label, const sparse_t &sparse) :
 {
 }
 
+// for map-like
+
+// void DataPoint::restore(ostream &output, const feat_id_map_t &feat_id_map, bool is_binary) const
+// {
+// 	output << label;
+// 	for (auto i = feat_id_map.begin(); i != feat_id_map.end(); ++i) {
+// 		auto it = sparse.find(i->second);
+// 		if (it != sparse.end()) {
+// 			output << '\t' << i->first;
+// 			if (!is_binary)
+// 				output << ' ' << it->second;
+// 		}
+// 	}
+// 	output << '\n';
+// }
+
 void DataPoint::restore(ostream &output, const feat_id_map_t &feat_id_map, bool is_binary) const
 {
 	output << label;
 	for (auto i = feat_id_map.begin(); i != feat_id_map.end(); ++i) {
-		auto it = sparse.find(i->second);
+		auto it = sparse.begin();
+		for (; it != sparse.end() && it->first != i->second; ++it);
 		if (it != sparse.end()) {
 			output << '\t' << i->first;
 			if (!is_binary)

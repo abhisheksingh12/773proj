@@ -9,7 +9,9 @@
 
 
 typedef std::vector<double> vec_t;
-typedef std::unordered_map<size_t, double> sparse_t;
+//typedef std::unordered_map<size_t, double> sparse_t; // 27.577s
+//typedef std::map<size_t, double> sparse_t; // 47.848s
+typedef std::vector<std::pair<size_t, double> > sparse_t; // 20.666s
 typedef std::unordered_map<std::string, size_t> feat_id_map_t;
 
 
