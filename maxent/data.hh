@@ -39,6 +39,8 @@ public:
 	void update_map_from_binary(std::istream &input);
 	void update_map_from_real(std::istream &input);
 
+	void dump(std::ostream &output) const;
+
 	friend std::ostream &operator<<(std::ostream &, const DataSet &);
 
 	std::vector<DataPoint> train, dev, test;

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
+#include <iomanip>
 
 
 using namespace std;
@@ -117,8 +118,10 @@ void DataSet::update_map_from_binary(istream &input)
 {
 	string feat_name;
 	while (input >> feat_name)
-		if (feat_id_map.find(feat_name) == feat_id_map.end())
-			feat_id_map[feat_name] = feat_id_map.size();
+		if (feat_id_map.find(feat_name) == feat_id_map.end()) {
+			size_t new_feat_id = feat_id_map.size();
+			feat_id_map[feat_name] = new_feat_id;
+		}
 }
 
 void DataSet::update_map_from_real(istream &input)
@@ -126,8 +129,29 @@ void DataSet::update_map_from_real(istream &input)
 	string feat_name;
 	double value;
 	while (input >> feat_name >> value)
-		if (feat_id_map.find(feat_name) == feat_id_map.end())
-			feat_id_map[feat_name] = feat_id_map.size();
+		if (feat_id_map.find(feat_name) == feat_id_map.end()) {
+			size_t new_feat_id = feat_id_map.size();
+			feat_id_map[feat_name] = new_feat_id;
+		}
+}
+
+void DataSet::dump(ostream &output) const
+{
+	output << "DataSet @ "
+	       << setiosflags(ios_base::hex) << this << '\n'
+	       << "\ttrain size = " << train.size() << '\n'
+	       << "\tdev size = " << dev.size() << '\n'
+	       << "\ttest size = " << test.size() << '\n'
+	       << "\tlabel_count = " << label_count << '\n'
+	       << "\tfeat_count = " << feat_count << '\n'
+	       << "\tis_binary = " << setiosflags(ios_base::boolalpha) << is_binary << '\n'
+	       << "\tfeat_id_map = {" << '\n';
+	for (auto i = feat_id_map.begin(); i != feat_id_map.end(); ++i)
+		output << "\t\t" << i->first << " => " << i->second << '\n';
+	output << "\t}\n";
+	output << "--BEGIN-OF-DATA--\n";
+	output << *this;
+	output << "--END-OF-DATA--\n";
 }
 
 ostream &operator<<(ostream &output, const DataSet &data)
