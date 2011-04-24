@@ -15,6 +15,8 @@
 
 using namespace std;
 
+#define DEBUG 1
+
 struct _pass_data
 {
 	_pass_data(double lambda,
@@ -24,12 +26,16 @@ struct _pass_data
 		lambda(lambda),
 		label_count(label_count),
 		feat_count(feat_count),
+		best_dev_correst(0),
+		best_x(label_count * feat_count),
 		data(data) {
 	}
 
 	double lambda;
 	size_t label_count;
 	size_t feat_count;
+	size_t best_dev_correst;
+	vec_t best_x;
 	const DataSet &data;
 };
 
@@ -45,11 +51,6 @@ static double _evaluate(void *instance, // user data
 	size_t feat_count = td.feat_count;
 	const DataSet &data = td.data;
 
-	// FIXME
-	int actual_n = label_count * feat_count;
-	for (int i = actual_n; i < n; ++i)
-	 	g[i] = 0;
-
 	// initialize with L2 regularization terms
 	double f = 0.5 * lambda * vv_dot_prod(x, x + n, x);
 	vv_mul_by(g, x, x + n, lambda);
@@ -57,7 +58,7 @@ static double _evaluate(void *instance, // user data
 	for (auto i = data.train.begin(); i != data.train.end(); ++i) {
 		// per-label score (w . phi)
 		vec_t score_per_label(label_count);
-		// FIXME: use transform when g++ supports lambda
+		// TODO: use transform when g++ supports lambda
 		for (size_t j = 0; j < label_count; ++j)
 			score_per_label[j] = sv_dot_prod(i->sparse.begin(),
 							 i->sparse.end(),
@@ -86,6 +87,21 @@ static double _evaluate(void *instance, // user data
 	return f;
 }
 
+static size_t _test(const vector<DataPoint> &points, const double *x,
+		    size_t feat_count, size_t label_count)
+{
+	size_t correct = 0;
+	vec_t scores(label_count);
+	for (auto i = points.begin(); i != points.end(); ++i) {
+		for (size_t j = 0; j != label_count; ++j)
+			scores[j] = sv_dot_prod(i->sparse.begin(), i->sparse.end(),
+						x + j * feat_count);
+		size_t best_label = max_element(scores.begin(), scores.end()) - scores.begin();
+		correct += best_label == i->label;
+	}
+	return correct;
+}
+
 static int _progress(void *instance, // same as _evaluate
 		     const double *x, // same as _evaluate
 		     const double *g, // same as _evaluate
@@ -99,11 +115,58 @@ static int _progress(void *instance, // same as _evaluate
 {
 	// TODO: selection on dev error rate
 
-        cerr << "Iteration " << k
+        cerr << "it " << k
 	     << "\tfx=" << fx
 	     << "\txnorm=" << xnorm
-	     << "\tgnorm=" << gnorm
-	     << endl;
+	     << "\tgnorm=" << gnorm;
+
+	_pass_data &td = *static_cast<_pass_data *>(instance);
+	size_t label_count = td.label_count;
+	size_t feat_count = td.feat_count;
+	const DataSet &data = td.data;
+
+// #if DEBUG
+// 	double train_correct = _test(data.train, x, feat_count, label_count);
+// 	cerr << "\ttr_err=" << (data.train.size() - train_correct) / data.train.size();
+// #endif
+
+	if (data.dev.size()) {
+		double dev_correct = _test(data.dev, x, feat_count, label_count);
+		cerr << "\tde_err=" << (data.dev.size() - dev_correct) / data.dev.size();
+		if (dev_correct > td.best_dev_correst) {
+			td.best_dev_correst = dev_correct;
+			copy(x, x + n, td.best_x.begin());
+			cerr << " [best]";
+		}
+	}
+
+// #if DEBUG
+// 	if (data.test.size()) {
+// 		double test_correct = _test(data.test, x, feat_count, label_count);
+// 		cerr << "\tte_err=" << (data.test.size() - test_correct) / data.test.size();
+// 	}
+// #endif
+
+	cerr << endl;
+
+// #if DEBUG
+// 	if (n < 100) {
+// 		cerr << "x = " << endl;
+// 		for (size_t i = 0; i < label_count; ++i) {
+// 			cerr << '\t';
+// 			for (size_t j = 0; j < feat_count; ++j)
+// 				cerr << (j == 0 ? "" : " ") << x[i * feat_count + j];
+// 			cerr << endl;
+// 		}
+// 		cerr << "g = " << endl;
+// 		for (size_t i = 0; i < label_count; ++i) {
+// 			cerr << '\t';
+// 			for (size_t j = 0; j < feat_count; ++j)
+// 				cerr << (j == 0 ? "" : " ") << g[i * feat_count + j];
+// 			cerr << endl;
+// 		}
+// 	}
+// #endif
 
 	return 0;
 }
@@ -192,12 +255,6 @@ void MaxEntModel::train(const DataSet &data, double lambda)
 
 	// compute parameter dimension
 	size_t n = label_count * feat_count;
-	cerr << "feat count = " << n;
-
-	// must do the following otherwise weird things will happen
-	if (n % 16 != 0)
-	 	n = n + 16 - n % 16;
-	cerr << " after padding = " << n << endl;
 	// parameter stoarge during optimization
 	double *x = lbfgs_malloc(n);
 	// information needed for _evaluate
@@ -214,7 +271,12 @@ void MaxEntModel::train(const DataSet &data, double lambda)
 		cerr << "Warning: lbfgs terminated with error code " << ret << endl;
 	// store weights
 	weights.resize(n);
-	copy(x, x + n, weights.begin());
+	if (td.best_dev_correst) {
+		cerr << "using best weights on dev" << endl;
+		copy(td.best_x.begin(), td.best_x.end(), weights.begin());
+	}
+	else
+		copy(x, x + n, weights.begin());
 	// free temporary parameter stoarge
 	lbfgs_free(x);
 }

@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string>
 
+#define DEBUG 0
+
 using namespace std;
 
 int main(int argc, char *argv[])
@@ -15,11 +17,16 @@ int main(int argc, char *argv[])
 
 	DataSet data(cin);
 
+#if DEBUG
+	data.dump(cerr);
+#else
 	cerr << "Data loaded:"
 	     << " train " << data.train.size()
 	     << " dev " << data.dev.size()
 	     << " test " << data.test.size()
 	     << endl;
+#endif
+
 
 	if (argc > 2 && data.dev.size() == 0) {
 		cerr << "No dev data; cannot tune lambda." << endl;
