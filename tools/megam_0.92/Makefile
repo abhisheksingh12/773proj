@@ -71,7 +71,7 @@ WITHDBM =dbm.cma -cclib -lmldbm -cclib -lndbm
 
 #WITHCLIBS =-I /usr/lib/ocaml/3.09.2/caml
 #WITHCLIBS =-I /usr/lib/ocaml/caml
-WITHCLIBS =-I /opt/local/lib/ocaml/caml
+WITHCLIBS =-I /usr/lib/ocaml/caml
 
 ################ End of user's variables #####################
 
@@ -87,7 +87,7 @@ opt : $(EXEC).opt
 
 #ocamlc -custom other options graphics.cma other files -cclib -lgraphics -cclib -lX11
 #ocamlc -thread -custom other options threads.cma other files -cclib -lthreads
-#ocamlc -custom other options str.cma other files -cclib -lcamlstr
+#ocamlc -custom other options str.cma other files -cclib -lstr
 #ocamlc -custom other options nums.cma other files -cclib -lnums
 #ocamlc -custom other options unix.cma other files -cclib -lunix
 #ocamlc -custom other options dbm.cma other files -cclib -lmldbm -cclib -lndbm
