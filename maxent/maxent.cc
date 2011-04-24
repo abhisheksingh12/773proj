@@ -259,6 +259,8 @@ void MaxEntModel::train(const DataSet &data, double lambda)
 	double *x = lbfgs_malloc(n);
 	// information needed for _evaluate
 	_pass_data td(lambda, label_count, feat_count, data);
+
+	// TODO: user-supplied optimization parameters
 	// actual optimization
 	int ret = lbfgs(n, // num of vars
 			x, // storage of vars
@@ -266,13 +268,16 @@ void MaxEntModel::train(const DataSet &data, double lambda)
 			_evaluate, // evaluating objective and gradient
 			_progress, // progress report
 			&td, // pass data
-			NULL); // lbfgs parameters; use default
+			NULL); // lbfgs parameters; NULL for default
 	if (ret)
 		cerr << "Warning: lbfgs terminated with error code " << ret << endl;
 	// store weights
 	weights.resize(n);
-	if (td.best_dev_correst) {
-		cerr << "using best weights on dev" << endl;
+	if (data.dev.size() && td.best_dev_correst) {
+		cerr << "using best weights on dev (de_err="
+		     << 1 - static_cast<double>(td.best_dev_correst) / data.dev.size()
+		     << ")"
+		     << endl;
 		copy(td.best_x.begin(), td.best_x.end(), weights.begin());
 	}
 	else
