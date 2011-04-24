@@ -6,29 +6,36 @@
 Brainstorming Features
 
 FUNCTION NAME PREFIXES:
-TOKENF are token features
-THOUGHTUF are thought unit features
+TOKENF process tokens for THOUGHTUF
+THOUGHTUF are feature functions
 
-TAGS
+TOKEN TAGS
 ----
 
-ALPHA = alphabetic
-ALPHAN = alphanumeric
-NUM    = all characters are digits
-NUMERIC = the token contains as a substring a string number like one, two
-ORDINAL = the token contains as a substring an ordinal string like first, second
+__ALPHA = alphabetic
+__ALPHAN = alphanumeric
+__NUM    = all characters are digits
+__NUMERIC = the token contains as a substring a string number like one, two
+__ORDINAL = the token contains as a substring an ordinal string like first, second
+
+FEATURE TAGS
+----
 
 '''
 from operator import itemgetter, attrgetter
-import traceback,os,sys,subprocess,pickle,nltk,re
+from feat_writer import megam_writer,replace_white_space
+from common import lazy_load_dyads,IncrCounter
+import traceback,os,sys,subprocess,pickle,nltk,re,cPickle
 
-__FEAT_GROUPS__ = ['baseline']
+
 
 """
 #######################################
 UTILITY FUNCTIONS
 #######################################
 """
+PADDING = [(None, None, None, [])]
+
 def tokenize(thoughtUnit):
     """
     NOTE:
@@ -42,7 +49,10 @@ def listToString(list):
         str +=' '+elem
     return str
 
-def writeTextToFile(fileInput,fileOutput):
+"""
+THE fourth column is the text from the cleaned input file
+"""
+def writeFourthColumnOfFileToFile(fileInput,fileOutput):
     fileI_h = open(fileInput,'r')
     fileO_h = open(fileOutput,'w')
     for line in fileI_h:
@@ -238,69 +248,277 @@ class RegularExpTagger:
             thoughtUnit = re.sub(pattern[0]," %s "%pattern[1],thoughtUnit)
              
         return thoughtUnit
+"""
+#######################################
+FUNCTIONS FOR RUNNING
+#######################################
+"""
 
-def run(file_h):
+"""
+PREPARING OUTPUT
+"""   
+
+def MATLAB_prepareOutput(fo,dataTuples):
+ 
+   
+    str = ""
+    for (code, features) in dataTuples:
+        list = []
+        code = re.sub('code', '', code)
+        list.append(code)
+        for feature in features:
+            feature = re.sub('pos', '', feature)
+            list.append(feature+":1")
+        fo.write(listToString(list)+"\n")
     
-    """
-    /Users/coloch/Documents/git_repo/773proj/outputs/Numbers.pckl
-    /Users/coloch/Documents/git_repo/773proj/outputs/OrdNumbers.pckl
-    /Users/coloch/Documents/git_repo/773proj/outputs/BigramTagger.pckl
-    """
-    numberF = "../outputs/Numbers.pckl" 
-    ordF    = "../outputs/OrdNumbers.pckl"
-    bigramT = "../outputs/BigramTagger.pckl"
+
     
+
+def useWindowFrame(fi,LABEL_ID):
+    window_back = 1
+    window_forward = 1
+   
+    return iter_features(lazy_load_dyads(fi),LABEL_ID,
+                                   window_back, window_forward)
+
+def translateToMatlab(featureMap,code,featureList):
+    """
+    imagine there is a gigantic feature vector < pos1, pos2, ...>
+    the positionList list is a list of positions 
+    [ posi, posj,...] where posi, posj, ... are the positions
+    of features that are in the featureList
+    
+    NOTE: I don't use integers, instead I use strings posi
+    to make it easier to debug
+    """
+    positionList = [] 
+    for feature in featureList:
+        if feature in featureMap:
+            featurePosition = featureMap[feature]
+        else:
+            featurePosition = "pos"+str(len(featureMap))
+            featureMap[feature] = featurePosition
+        
+        positionList.append(featurePosition)
+    return positionList    
+
+def iteratorToListOfMEGAMStr(docs):
+    lines = []
+    for data in docs:
+        for (label, feats) in data:
+            lines.append(str(label) + '\t' +
+                        '\t'.join(('F_' + replace_white_space(str(i)) for i in feats)) +
+                        '\n')
+    return lines
+
+def iter_features(docs, LABEL_ID,window_back=1, window_forward=1):
+    """A generator of features
+
+    `docs`: [(dyad, role, code, unit)]
+    `window_back`: how far to look back
+    `window_forward`: how far to look forward
+    """
+    
+    global PADDING
+    for doc in docs:
+        if type(doc) is not list:
+            doc = list(doc)
+        # add dummy items and tokenize units
+        doc = PADDING * window_back + \
+              [(dyad, role, code, unit.split()) for (dyad, role, code, unit) in doc] + \
+              PADDING * window_forward
+        feat_doc = []
+        for i in range(window_back, len(doc) - window_forward):
+            _, role, code, unit = doc[i]
+            # integer label; make megam happy
+            
+            label = LABEL_ID(code)
+            # add features
+            feats = set()
+            feats.add('SPEAKER_' + role)
+            feats.update(('CUR_' + w for w in unit))
+            for j in range(1, window_back+1):
+                prefix = 'BACK_{}_'.format(j)
+                _, _, _, unit = doc[i-j]
+                feats.update((prefix + w for w in unit))
+            for j in range(1, window_forward+1):
+                prefix = 'FORWARD_{}_'.format(j)
+                _, _, _, unit = doc[i+j]
+                feats.update((prefix + w for w in unit))
+            feat_doc.append((label, sorted(feats)))
+        yield feat_doc
+
+def writeFile(fo,lines,_):
+    for line in lines:
+        fo.write(str(line))
+
+def MATLABwriteFile(fo,lines,FEATURE_MAP):
+    
+    
+    for line in lines:
+        columns =  line.split('\t')
+        code = columns[0]
+        
+        features = columns[1:]
+        """
+        imagine there is a gigantic feature vector < pos1, pos2, ...>
+        the positionList list is a list of positions 
+        [ posi, posj,...] where posi, posj, ... are the positions
+        of features that are in the featureList
+        
+        NOTE: I don't use integers, instead I use strings posi
+        to make it easier to debug
+        """
+        a_string = str(code)+"\t"
+        for feature in features:
+            if feature in FEATURE_MAP:
+                featurePosition = FEATURE_MAP[feature]
+            else:
+                featurePosition = "pos%d:1"%(len(FEATURE_MAP))
+                FEATURE_MAP[feature] = featurePosition
+            
+            a_string += str(featurePosition)+"\t"
+    
+        fo.write(a_string[:-1]+'\n')
+    return len(FEATURE_MAP)
+        
+        
+        
+
+def run(file_h,writer,fo,LABEL_ID,FEATURE_MAP):
+    """
+    this path appies if this is called from
+    /773proj/featureRun/megam/run_megam.sh
+    """
+    numberF = "../../pickles/Numbers.pckl" 
+    ordF    = "../../pickles/OrdNumbers.pckl"
+    bigramT = "../../pickles/BigramTagger.pckl"
+    
+    __quiet = True
     nd = Gazetteer(numberF,ordF)
     #pos_tagger = BigramPOStagger(bigramT)
     regex_t = RegularExpTagger()
+    featureMap = {}
+    dataTuples = []
+    featureTuples = []
+    sys.stdout.write("PROCESSING ...\n\n")
+    
+    
     for line in file_h:
         
         parts = line.split('\t')
+        dyad = parts[0]
+        somethin = parts[1]
+        role = parts[2]
         code = parts[3]
         text = parts[4]
-        
-        codeMap = {}
+
         
         """
         CODE to INT mapping
         """
-        if code in codeMap:
-            codeInt = codeMap[code]
-        else:
-            codeInt = len(codeMap)
-            codeMap[code] = codeInt
-             
+
+        
+        
+        """
+        TOKEN to int 
+        """
+        
+        """
+        PROCESSING
+        """
         
         tokens = tokenize(text)
-        p_txt = listToString(map(TOKENF_digitize,tokens))
-        print regex_t.THOUGHTUF_tag(p_txt)
+        
+        p_tokens = tokens
+        #p_tokens = map(TOKENF_digitize,tokens)
+        
+        #print regex_t.THOUGHTUF_tag(p_tokens)
         #for token in tokens:
             #nd.TOKENF_Numeric(token)
             #nd.TOKENF_Ordinal(token)
         
-        #print map(nd.TOKENF_Numeric,tokens)
-        #print map(nd.TOKENF_Ordinal,tokens)
         
-        #print map(TOKENF_isNotalphaNum,tokens)
+        """
+        POST PROCESSING
+        """
         
-        #print pos_tagger.tagListOfWords(tokens,10)
+        featureTuples.append("%s\t%s\t%s\t%s\t%s\n"%(dyad,somethin,role,code,listToString(p_tokens)))
+        
+        #p_positions = translateToMatlab(featureMap,code,p_tokens)    
+        #dataTuples.append((codeMap[code],p_positions))
+        
+        
+        #if not __quiet:
+        #    sys.stdout.write("\t%s\n"%listToString(p_tokens))
 
-         
+            
+      
+    
+    feat_iterator = useWindowFrame(featureTuples,LABEL_ID)
+    lines = iteratorToListOfMEGAMStr(feat_iterator)
+   
+    len_featureMap = writer(fo,lines,FEATURE_MAP)
+    if len_featureMap != None:
+        
+        sys.stdout.write("Feature Vector is of Size: %s\n"%(len_featureMap))
+    
     
 if __name__ == "__main__":
     
     
-    try:
-        clean_f = open(sys.argv[1],'r')
-        numberF = sys.argv[2]
-        ordF = sys.argv[3]
-        bigramT = sys.argv[4]
+    LABEL_ID = IncrCounter()
+    usage_str = "Usage problems"
+    FEATURE_MAP = {}
+    #try:
+    """
+    Change back to the following:
+    which = sys.argv[1]
+    writer = {'megam': writeFile,
+              'matlab': MATLABwriteFile}[which]
+    """
+    which = sys.argv[1]
+    writer = {'megam': MATLABwriteFile,
+              'matlab': MATLABwriteFile}[which]
+              
+    input_dir  = sys.argv[2]
+    output_dir = sys.argv[3]
+    if len(sys.argv) == 5:
+        fi = open(sys.argv[4],'r')
+        fo = sys.stdout
+
+        codeMapping = run(fi,writer,fo,LABEL_ID)
+                  
+    elif len(sys.argv) == 7:
+        
+        train_f = sys.argv[4]
+        test_f = sys.argv[5]
+        dev_f = sys.argv[6]
+        train_fo = open(output_dir+"/train."+which,'w')
+        test_fo = open(output_dir+"/test."+which,'w')
+        dev_fo = open(output_dir+"/dev."+which,'w')
+        
+        """
+        HACK TO MAKE IT WORK WITH KE's CODE
+        talk to him to avoid doing this
+        """
+        tmpFile_name = output_dir + '/' + 'ERASEME_f.' + which
+        
+        
+        run(open(input_dir+"/"+train_f,'r'),writer,train_fo,LABEL_ID,FEATURE_MAP)
+        run(open(input_dir+"/"+test_f,'r') ,writer,test_fo,LABEL_ID,FEATURE_MAP)
+        run(open(input_dir+"/"+dev_f,'r')  ,writer,dev_fo,LABEL_ID,FEATURE_MAP)    
+
+    else:
+        raise Exception(usage_str)
             
-    except:
-        print "Can't open file %s"%clean_f
+          
+        #except:
+            #raise Exception(usage_str)
     
+    with open(output_dir + '/' + 'map.' + which, 'w') as f:
+        cPickle.dump(LABEL_ID, f)
     
-    run(clean_f)    
     
     
     

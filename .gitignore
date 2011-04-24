@@ -7,3 +7,7 @@ test*
 map*
 LOCALINFO
 outputs
+experimental
+pickles
+featureRun
+Makefile
