@@ -2,6 +2,7 @@
 #define _MAXENT_HH
 
 #include <iostream>
+#include <vector>
 
 #include "data.hh"
 
@@ -13,6 +14,7 @@ public:
 	void dump_model(std::ostream &output);
 
 	size_t predict(const sparse_t &sparse, vec_t &probs) const;
+	size_t test(const std::vector<DataPoint> &points) const;
 	void compute_scores(const sparse_t &sparse, vec_t &result) const;
 
 	sparse_t build_sparse(std::istream &input, bool binary=true) const;

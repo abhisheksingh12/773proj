@@ -45,6 +45,11 @@ static double _evaluate(void *instance, // user data
 	size_t feat_count = td.feat_count;
 	const DataSet &data = td.data;
 
+	// FIXME
+	int actual_n = label_count * feat_count;
+	for (int i = actual_n; i < n; ++i)
+	 	g[i] = 0;
+
 	// initialize with L2 regularization terms
 	double f = 0.5 * lambda * vv_dot_prod(x, x + n, x);
 	vv_mul_by(g, x, x + n, lambda);
@@ -187,8 +192,14 @@ void MaxEntModel::train(const DataSet &data, double lambda)
 
 	// compute parameter dimension
 	size_t n = label_count * feat_count;
+	cerr << "feat count = " << n;
+
+	// must do the following otherwise weird things will happen
+	if (n % 16 != 0)
+	 	n = n + 16 - n % 16;
+	cerr << " after padding = " << n << endl;
 	// parameter stoarge during optimization
-	double *x = lbfgs_malloc(n * sizeof(double));
+	double *x = lbfgs_malloc(n);
 	// information needed for _evaluate
 	_pass_data td(lambda, label_count, feat_count, data);
 	// actual optimization
@@ -244,3 +255,11 @@ sparse_t MaxEntModel::build_sparse(istream &input, bool binary) const
 		return sparse_from_real(input, feat_id_map);
 }
 
+size_t MaxEntModel::test(const vector<DataPoint> &points) const
+{
+	size_t correct = 0;
+	vec_t probs;
+	for (auto i = points.begin(); i != points.end(); ++i)
+		correct += (predict(i->sparse, probs) == i->label);
+	return correct;
+}
