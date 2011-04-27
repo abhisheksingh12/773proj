@@ -5,7 +5,7 @@ CXX=g++-4.6
 
 # Usually you don't need to touch this
 CC=$(CXX)
-CXXFLAGS=-std=c++0x -Wall -I../tools/liblbfgs-build/include -O2
+CXXFLAGS=-std=c++0x -Wall -I../tools/liblbfgs-build/include -mtune=native -O2
 LDFLAGS=-L$(LIBLBFGS) -llbfgs -Wl,-rpath,$(LIBLBFGS)
 TARGET=maxent_predict maxent_train latent_log_linear_train latent_log_linear_predict
 
