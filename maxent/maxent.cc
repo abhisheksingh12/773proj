@@ -113,8 +113,6 @@ static int _progress(void *instance, // same as _evaluate
 		     int k, // iteration count
 		     int ls) // number of evaluations called
 {
-	// TODO: selection on dev error rate
-
         cerr << "it " << k
 	     << "\tfx=" << fx
 	     << "\txnorm=" << xnorm
