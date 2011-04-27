@@ -11,6 +11,12 @@
 // |  /
 // | /
 // Y
+
+struct LLLMStruct
+{
+	bool h, x, y, hx, hy, xy, hxy;
+};
+
 class LatentLogLinearModel
 {
 public:
@@ -24,8 +30,9 @@ public:
 
 	sparse_t build_sparse(std::istream &input, bool binary=true) const;
 
-	void train(const DataSet &data, size_t latent_count, double lambda);
+	void train(const DataSet &data, const LLLMStruct &st, size_t latent_count, double lambda);
 
+	LLLMStruct st;
 	size_t label_count, feat_count, latent_count;
 	vec_t weights;
 	feat_id_map_t feat_id_map;

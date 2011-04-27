@@ -37,9 +37,11 @@ int main(int argc, char *argv[])
 
 	cerr << "latent_count = " << latent_count << endl;
 
+	LLLMStruct st;
+
 	if (argc == 3) {
 		LatentLogLinearModel model;
-		model.train(data, latent_count, stod(argv[2]));
+		model.train(data, st, latent_count, stod(argv[2]));
 		model.dump_model(cout);
 	} else {
 		LatentLogLinearModel model, best_model;
@@ -48,7 +50,7 @@ int main(int argc, char *argv[])
 		double max_lambda = 0;
 		for (int i = 2; i < argc; ++i) {
 			double lambda = stod(argv[i]);
-			model.train(data, latent_count, lambda);
+			model.train(data, st, latent_count, lambda);
 			size_t correct = model.test(data.dev);
 			cerr << "lambda = " << lambda
 			     << " error rate = "

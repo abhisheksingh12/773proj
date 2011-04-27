@@ -19,11 +19,13 @@ using namespace std;
 
 struct _pass_data
 {
-	_pass_data(double lambda,
+	_pass_data(const LLLMStruct &st,
+		   double lambda,
 		   size_t label_count,
 		   size_t feat_count,
 		   size_t latent_count,
 		   const DataSet &data) :
+		st(st),
 		lambda(lambda),
 		label_count(label_count),
 		feat_count(feat_count),
@@ -32,6 +34,8 @@ struct _pass_data
 		best_x(label_count * feat_count),
 		data(data) {
 	}
+
+	const LLLMStruct &st;
 
 	double lambda;
 
@@ -300,11 +304,13 @@ void LatentLogLinearModel::dump_model(ostream &output)
 	}
 }
 
-void LatentLogLinearModel::train(const DataSet &data, size_t latent_count, double lambda)
+void LatentLogLinearModel::train(const DataSet &data, const LLLMStruct &st,
+				 size_t latent_count, double lambda)
 {
 	label_count = data.label_count;
 	feat_count = data.feat_count;
 	this->latent_count = latent_count;
+	this->st = st;
 	feat_id_map = data.feat_id_map;
 
 	// compute parameter dimension
@@ -313,7 +319,7 @@ void LatentLogLinearModel::train(const DataSet &data, size_t latent_count, doubl
 	// parameter stoarge during optimization
 	double *x = lbfgs_malloc(n);
 	// information needed for _evaluate
-	_pass_data td(lambda, label_count, feat_count, latent_count, data);
+	_pass_data td(st, lambda, label_count, feat_count, latent_count, data);
 
 	// TODO: user-supplied optimization parameters
 	lbfgs_parameter_t params;
