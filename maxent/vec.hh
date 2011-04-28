@@ -57,6 +57,17 @@ void vs_sub_eq(It u_begin,
 	}
 }
 
+template <typename It, typename SIt>
+void vs_sub_eq_mul_by(It u_begin,
+		      SIt v_begin, SIt v_end,
+		      double n)
+{
+	for (; v_begin != v_end; ++v_begin) {
+		size_t offset = v_begin->first;
+		double value = v_begin->second;
+		u_begin[offset] -= value * n;
+	}
+}
 
 // multiplication
 template <typename It1, typename It2>

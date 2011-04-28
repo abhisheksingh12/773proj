@@ -1,4 +1,4 @@
-#include "maxent.hh"
+#include "latent_log_linear.hh"
 
 #include <fstream>
 #include <iostream>
@@ -8,7 +8,7 @@
 
 using namespace std;
 
-bool predict_line(const string &line, const MaxEntModel &m, ostream &output)
+bool predict_line(const string &line, const LatentLogLinearModel &m, ostream &output)
 {
 	istringstream strin(line);
 
@@ -39,13 +39,15 @@ int main(int argc, char *argv[])
 	}
 
 	ifstream fin(argv[1]);
-	MaxEntModel m;
+	LatentLogLinearModel m;
 	m.load_model(fin);
 
 	cerr << "Model loaded: "
 	     << "path = " << argv[1] << " "
 	     << "label_count = " << m.label_count << " "
-	     << "feat_count = " << m.feat_count << endl;
+	     << "feat_count = " << m.feat_count << " "
+	     << "latent_count = " << m.latent_count
+	     << endl;
 
 	string line;
 	size_t correct = 0;

@@ -113,8 +113,6 @@ static int _progress(void *instance, // same as _evaluate
 		     int k, // iteration count
 		     int ls) // number of evaluations called
 {
-	// TODO: selection on dev error rate
-
         cerr << "it " << k
 	     << "\tfx=" << fx
 	     << "\txnorm=" << xnorm
@@ -261,6 +259,9 @@ void MaxEntModel::train(const DataSet &data, double lambda)
 	_pass_data td(lambda, label_count, feat_count, data);
 
 	// TODO: user-supplied optimization parameters
+	lbfgs_parameter_t params;
+	lbfgs_parameter_init(&params);
+	params.max_iterations = 150;
 	// actual optimization
 	int ret = lbfgs(n, // num of vars
 			x, // storage of vars
@@ -268,7 +269,7 @@ void MaxEntModel::train(const DataSet &data, double lambda)
 			_evaluate, // evaluating objective and gradient
 			_progress, // progress report
 			&td, // pass data
-			NULL); // lbfgs parameters; NULL for default
+			&params); // lbfgs parameters; NULL for default
 	if (ret)
 		cerr << "Warning: lbfgs terminated with error code " << ret << endl;
 	// store weights
