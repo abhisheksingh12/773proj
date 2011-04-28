@@ -25,6 +25,10 @@ FEATURE TAGS
 from operator import itemgetter, attrgetter
 from feat_writer import megam_writer,replace_white_space
 from common import lazy_load_dyads,IncrCounter
+from LIWCproc import LIWCproc
+from sets import Set
+from SUBJCLUESproc import SUBJCLUESproc
+from aspell import aspell
 import traceback,os,sys,subprocess,pickle,nltk,re,cPickle
 
 
@@ -35,6 +39,12 @@ UTILITY FUNCTIONS
 #######################################
 """
 PADDING = [(None, None, None, [])]
+PROCESSING_MODE = False
+global PROCESSING_MODE
+BASELINE = False
+global BASELINE
+ECLIPSE = False
+global ECLIPSE
 
 def tokenize(thoughtUnit):
     """
@@ -43,6 +53,18 @@ def tokenize(thoughtUnit):
     """
     return thoughtUnit.split()
 
+def notify(i, n=None,everyN=100):
+    
+    if i % everyN == 0:
+        if n != None:
+            p = (i + 1.0) * 100.0 / float(n)
+            print '. %i (%f%%)'%(i + 1, p)
+        else:
+            print '. (%d)'%(i + 1)
+    else:
+        #sys.stdout.write('.')
+        print('.'),
+        
 def listToString(list):
     str = ''
     for elem in list:
@@ -97,17 +119,36 @@ class BigramPOStagger:
         BigramPOStagger:
         ########
         """
-        if pathToPickle != None:
-            brown = nltk.corpus.brown.tagged_sents()
+        if pathToPickle == None:
+            #brown = nltk.corpus.brown.tagged_sents()
+            #nounByDefault_tagger = nltk.DefaultTagger('NN')
+            #unigram_tagger = nltk.UnigramTagger(brown,backoff=nounByDefault_tagger)
+            #self.bigram_tagger = nltk.BigramTagger(brown,backoff=unigram_tagger)
+            """
+            NPS CHAT tagged words
+            """
+            chat_words = [nltk.corpus.nps_chat.tagged_words()]
             nounByDefault_tagger = nltk.DefaultTagger('NN')
-            unigram_tagger = nltk.UnigramTagger(brown,backoff=nounByDefault_tagger)
-            self.bigram_tagger = nltk.BigramTagger(brown,backoff=unigram_tagger)
+            unigram_tagger = nltk.UnigramTagger(chat_words,backoff=nounByDefault_tagger)
+            self.bigram_tagger = nltk.BigramTagger(chat_words,backoff=unigram_tagger)
             
             pickle.dump(self.bigram_tagger, open(pathToPickle,"wb"))
+            
+            
         else:
             self.bigram_tagger = pickle.load(open(pathToPickle))
+
+    def tagListOfWords(self,tagParts):
+        result =  self.bigram_tagger.tag(tagParts)
+        """
+        Sample output
+        [('red', 'JJ'), ('barn', 'NN')]
         
-    def tagListOfWords(self,tagParts,topN):
+        we will unzip and return a list of POS tags
+        """
+        return result
+      
+    def tagListOfWordsTopN(self,tagParts,topN):
         result =  self.bigram_tagger.tag(tagParts)
         """
         Sample output
@@ -126,7 +167,7 @@ class BigramPOStagger:
         ########
         ########
         """
-    def posUsage(self,posList,topN):
+    def posUsageTopN(self,posList,topN):
         dict = {}
         for pos in posList:
             if pos in dict:
@@ -134,6 +175,37 @@ class BigramPOStagger:
             else:
                 dict[pos] = 1
         return frequencyList(dict)[:topN] 
+    def posUsage(self,posList):
+        dict = {}
+        for pos in posList:
+            if pos in dict:
+                dict[pos] = + 1
+            else:
+                dict[pos] = 1
+        
+        return [pos+"_"+str(freq) for (pos,freq) in frequencyList(dict)] 
+class Lemmatize():
+    """
+    Lemmatizes each token in the stream
+    """
+    def __init__(self):
+        self.lemmatizer = nltk.stem.WordNetLemmatizer() 
+        
+
+    def processToken(self, token,pos):        
+
+        if pos == 'JJ':
+            pos = nltk.corpus.wordnet.ADJ
+        elif pos == 'ADV':
+            pos = nltk.corpus.wordnet.ADV
+        elif pos in ['N', 'NN', 'NNS']:
+            pos = nltk.corpus.wordnet.NOUN
+        elif pos in ['V', 'VD', 'VG', 'VN', 'VBD', 'VBG']:
+            pos = nltk.corpus.wordnet.VERB        
+        else:
+            pos = nltk.corpus.wordnet.NOUN                                
+                
+        return self.lemmatizer.lemmatize(token, pos)
 class Gazetteer:
     def __init__(self,pathToNumberPickle,pathToOrdinalPickle,numberFile=None,ordinalFile = None):
         """"
@@ -180,9 +252,9 @@ class Gazetteer:
         #for key in self.numberDict:
             
         #if token in key:
-        
+        print self.numberDict
         if token in self.numberDict:
-            return (token,"@")
+            return (token,"####@#####")
         
         else:
             
@@ -223,7 +295,14 @@ def TOKENF_digitize(token):
             str += char
     return str
     
-
+def TOKENF_removeStopWord(token,stopwords):
+    
+    if token.encode('utf-8') in stopwords:
+        return None
+        
+    else:
+         return token
+    
 """
 #######################################
 THOUGHT UNIT FEATURES
@@ -239,7 +318,7 @@ class RegularExpTagger:
                          ('[$]+[ @]+[,]*[ @]*','MONEY'),
                          ('[@]+[ ]*degree[s]*','TEMP'),
                          ('[@]+[ ]*(percent|\%)','PERC'),
-                         ('((O|o)+k|(O|o)+hh|(U|u)+mm)+','SPEECH')]
+                         ('((O|o)+k|(O|o)+hh|(U|u)+mm)+','FILLER')]
                     
         
     def THOUGHTUF_tag(self,thoughtUnit):
@@ -257,26 +336,11 @@ FUNCTIONS FOR RUNNING
 """
 PREPARING OUTPUT
 """   
-
-def MATLAB_prepareOutput(fo,dataTuples):
- 
-   
-    str = ""
-    for (code, features) in dataTuples:
-        list = []
-        code = re.sub('code', '', code)
-        list.append(code)
-        for feature in features:
-            feature = re.sub('pos', '', feature)
-            list.append(feature+":1")
-        fo.write(listToString(list)+"\n")
     
 
-    
-
-def useWindowFrame(fi,LABEL_ID):
-    window_back = 1
-    window_forward = 1
+def useWindowFrame(fi,LABEL_ID,window_back=1,window_forward=1):
+    #window_back = 1
+    #window_forward = 1
    
     return iter_features(lazy_load_dyads(fi),LABEL_ID,
                                    window_back, window_forward)
@@ -348,11 +412,11 @@ def iter_features(docs, LABEL_ID,window_back=1, window_forward=1):
             feat_doc.append((label, sorted(feats)))
         yield feat_doc
 
-def writeFile(fo,lines,_):
+def writeFile(fo,lines,FEATURE_MAP,canAddNewFeatures):
     for line in lines:
         fo.write(str(line))
 
-def MATLABwriteFile(fo,lines,FEATURE_MAP):
+def MATLABwriteFile(fo,lines,FEATURE_MAP,canAddNewFeatures):
     
     
     for line in lines:
@@ -371,41 +435,91 @@ def MATLABwriteFile(fo,lines,FEATURE_MAP):
         """
         a_string = str(code)+"\t"
         for feature in features:
+            featurePosition = None
             if feature in FEATURE_MAP:
                 featurePosition = FEATURE_MAP[feature]
             else:
-                featurePosition = "pos%d:1"%(len(FEATURE_MAP))
-                FEATURE_MAP[feature] = featurePosition
-            
-            a_string += str(featurePosition)+"\t"
+                if canAddNewFeatures:
+                    featurePosition = "%d:1"%(len(FEATURE_MAP))
+                    FEATURE_MAP[feature] = featurePosition
+            if featurePosition != None:
+                a_string += str(featurePosition)+"\t"
     
         fo.write(a_string[:-1]+'\n')
     return len(FEATURE_MAP)
+
+"""
+Add features to lines in the MEGAM format
+"""        
+def appendFeatures(lines,features):
+        if len(features) == 0:
+            return lines
+        if len(features) != len(lines):
+            print len(features),len(lines)
+            raise Exception("Cannot append features if the number of lines of features don't match with the number of lines")
+        comb_lines = zip(lines,features)
         
+        finalLines = []
+        for (line,feats) in comb_lines:
+            finalLines.append(line.rstrip('\n')+' '+listToString(feats)+'\n')
+            
         
+        return finalLines        
         
 
-def run(file_h,writer,fo,LABEL_ID,FEATURE_MAP):
+def run(file_h,writer,fo,LABEL_ID,FEATURE_MAP,canAddNewFeatures=False):
     """
     this path appies if this is called from
     /773proj/featureRun/megam/run_megam.sh
     """
-    numberF = "../../pickles/Numbers.pckl" 
-    ordF    = "../../pickles/OrdNumbers.pckl"
-    bigramT = "../../pickles/BigramTagger.pckl"
+    if ECLIPSE:
+        numberF = "../pickles/Numbers.pckl" 
+        ordF    = "../pickles/OrdNumbers.pckl"
+        bigramT = "../pickles/BigramTagger.pckl"
+        LIWCresourceF ='../pickles/LIWCresource.pckl'
+        subCl_f = '../pickles/SUBJCLUESresource.pckl'
+    
+        
+    else:
+        numberF = "../../pickles/Numbers.pckl" 
+        ordF    = "../../pickles/OrdNumbers.pckl"
+        bigramT = "../../pickles/BigramTagger.pckl"
+        LIWCresourceF ='../../pickles/LIWCresource.pckl'
+        subCl_f = '../../pickles/SUBJCLUESresource.pckl'
+    
     
     __quiet = True
-    nd = Gazetteer(numberF,ordF)
-    #pos_tagger = BigramPOStagger(bigramT)
+    #nd = Gazetteer(numberF,ordF)
+    pos_tagger = BigramPOStagger(bigramT)
     regex_t = RegularExpTagger()
-    featureMap = {}
-    dataTuples = []
+    ling_res = LIWCproc(LIWCresourceF)
+    subCl = SUBJCLUESproc(subCl_f)
+    #stopwords = nltk.corpus.stopwords.words()
+    wnl = Lemmatize()    
+    spell_checker = aspell()
+            
+    
+    processedLines = []
     featureTuples = []
-    sys.stdout.write("PROCESSING ...\n\n")
+
+    """
+    Word Processing for Feature Extraction
+    """    
+    sys.stdout.write("WORD PROCESSING\n\n")
     
-    
+    featuresNotToShift = []
+    i = 0
     for line in file_h:
         
+        """
+        #UNCOMMENT
+        |
+        |
+        V
+        """
+        
+        #i +=1
+        #notify(i)
         parts = line.split('\t')
         dyad = parts[0]
         somethin = parts[1]
@@ -413,56 +527,111 @@ def run(file_h,writer,fo,LABEL_ID,FEATURE_MAP):
         code = parts[3]
         text = parts[4]
 
-        
-        """
-        CODE to INT mapping
-        """
 
-        
-        
-        """
-        TOKEN to int 
-        """
-        
-        """
-        PROCESSING
-        """
-        
         tokens = tokenize(text)
         
         p_tokens = tokens
-        #p_tokens = map(TOKENF_digitize,tokens)
-        
-        #print regex_t.THOUGHTUF_tag(p_tokens)
-        #for token in tokens:
-            #nd.TOKENF_Numeric(token)
-            #nd.TOKENF_Ordinal(token)
         
         
+        if not BASELINE:
+            
+    
+            #p_tokens = map(TOKENF_digitize,p_tokens)
+            
+            
+            #categories = []
+            #clues = Set()
+            
+            """
+            #Did not work
+            TOKENF_removeStopWord(token,stopwords)
+            """
+            
+            #p_tags = pos_tagger.tagListOfWords(tokens)
+            #p_tokens = [wnl.processToken(word,pos) for (word,pos) in p_tags]
+            #p_tags = [pos for (_,pos) in p_tags]
+            #p_tags = pos_tagger.posUsage(p_tags)
+            
+            #p_tokens = pos_tagger.posUsage(p_tokens)
+            #s_tokens = []
+            
+            #for token in tokens:
+                #other = spell_checker.getSpellingCorrections(token)
+                #if other != []:
+                #    print "FIXED",token,other
+                #    for word in other[0].split():
+                #        s_tokens.append(word)
+                #else:
+                #    s_tokens.append(token)
+                
+                #nd.TOKENF_Numeric(token)
+                #nd.TOKENF_Ordinal(token)
+                
+                 
+                #categoryList = ling_res.tag(token)
+                #[categories.append(cat) for cat in categoryList]
+                #token_clues = subCl.inquireWITHOUTPOS(token)
+                #[ clues.add(clue) for clue in token_clues]
+               
+            #p_tokens = s_tokens 
+            #[p_tokens.append(pos) for pos in p_tags]
+            #[p_tokens.append(cat) for cat in categories]
+            #[p_tokens.append(clue) for clue in clues]
+            #featuresNotToShift.append(clues)
+            """
+            IMPORTANT: Removing None
+            """
+            p_tokens = [token  for token in p_tokens if token != None]
+            if p_tokens == []:
+                p_tokens.append('EMPTY')
+        
+        processedLines.append((dyad,somethin,role,code,p_tokens))
+        
+
+    """
+    PROCESSING
+    """
+    sys.stdout.write("PROCESSING\n\n")
+    
+    
+    i = 0
+    n = len(processedLines)
+    for (dyad,somethin,role,code,p_tokens) in processedLines:
+        i += 1
+        notify(i, n,everyN=100)
+        
+        thoughtUnit = listToString(p_tokens)
+        """
+        Feature Extraction
+        """ 
+        """  
+        if not BASELINE:
+         
+            
+            THOUGHT UNIT FEATURES 
+            #thoughtUnit = regex_t.THOUGHTUF_tag(thoughtUnit)
+        """
         """
         POST PROCESSING
         """
+        featureTuples.append("%s\t%s\t%s\t%s\t%s\n"%(dyad,somethin,role,code,thoughtUnit))
         
-        featureTuples.append("%s\t%s\t%s\t%s\t%s\n"%(dyad,somethin,role,code,listToString(p_tokens)))
-        
-        #p_positions = translateToMatlab(featureMap,code,p_tokens)    
-        #dataTuples.append((codeMap[code],p_positions))
-        
-        
-        #if not __quiet:
-        #    sys.stdout.write("\t%s\n"%listToString(p_tokens))
-
             
       
-    
-    feat_iterator = useWindowFrame(featureTuples,LABEL_ID)
-    lines = iteratorToListOfMEGAMStr(feat_iterator)
-   
-    len_featureMap = writer(fo,lines,FEATURE_MAP)
-    if len_featureMap != None:
+    if PROCESSING_MODE:
+        writeFile(sys.stdout, featureTuples, None,None)
         
-        sys.stdout.write("Feature Vector is of Size: %s\n"%(len_featureMap))
+    else:
+        feat_iterator = useWindowFrame(featureTuples,LABEL_ID,window_back=2,window_forward=2)
+        lines = iteratorToListOfMEGAMStr(feat_iterator)
+        
+        lines = appendFeatures(lines,featuresNotToShift)
+        
     
+        len_featureMap = writer(fo,lines,FEATURE_MAP,canAddNewFeatures)
+        if len_featureMap != None:
+            
+            sys.stdout.write("Feature Vector is of Size: %s\n"%(len_featureMap))
     
 if __name__ == "__main__":
     
@@ -471,8 +640,6 @@ if __name__ == "__main__":
     usage_str = "Usage problems"
     FEATURE_MAP = {}
     #try:
-    """
-    Change back to the following:
     which = sys.argv[1]
     writer = {'megam': writeFile,
               'matlab': MATLABwriteFile}[which]
@@ -480,21 +647,21 @@ if __name__ == "__main__":
     which = sys.argv[1]
     writer = {'megam': MATLABwriteFile,
               'matlab': MATLABwriteFile}[which]
-              
+    """          
     input_dir  = sys.argv[2]
     output_dir = sys.argv[3]
     if len(sys.argv) == 5:
-        fi = open(sys.argv[4],'r')
+        fi = open(input_dir+'/'+sys.argv[4],'r')
         fo = sys.stdout
 
-        codeMapping = run(fi,writer,fo,LABEL_ID)
+        codeMapping = run(fi,writer,fo,LABEL_ID,FEATURE_MAP,canAddNewFeatures=True)
                   
     elif len(sys.argv) == 7:
         
         train_f = sys.argv[4]
         test_f = sys.argv[5]
         dev_f = sys.argv[6]
-        train_fo = open(output_dir+"/train."+which,'w')
+        train_fo = open(output_dir+"/train."+which,'w',)
         test_fo = open(output_dir+"/test."+which,'w')
         dev_fo = open(output_dir+"/dev."+which,'w')
         
@@ -505,9 +672,9 @@ if __name__ == "__main__":
         tmpFile_name = output_dir + '/' + 'ERASEME_f.' + which
         
         
-        run(open(input_dir+"/"+train_f,'r'),writer,train_fo,LABEL_ID,FEATURE_MAP)
-        run(open(input_dir+"/"+test_f,'r') ,writer,test_fo,LABEL_ID,FEATURE_MAP)
-        run(open(input_dir+"/"+dev_f,'r')  ,writer,dev_fo,LABEL_ID,FEATURE_MAP)    
+        run(open(input_dir+"/"+train_f,'r'),writer,train_fo,LABEL_ID,FEATURE_MAP,canAddNewFeatures=True)
+        run(open(input_dir+"/"+test_f,'r') ,writer,test_fo,LABEL_ID,FEATURE_MAP,canAddNewFeatures=True)
+        run(open(input_dir+"/"+dev_f,'r')  ,writer,dev_fo,LABEL_ID,FEATURE_MAP,canAddNewFeatures=True)    
 
     else:
         raise Exception(usage_str)
@@ -515,10 +682,18 @@ if __name__ == "__main__":
           
         #except:
             #raise Exception(usage_str)
-    
-    with open(output_dir + '/' + 'map.' + which, 'w') as f:
-        cPickle.dump(LABEL_ID, f)
-    
+    if len(sys.argv) == 7:
+        with open(output_dir + '/' + 'map.' + which, 'w') as f:
+            cPickle.dump(LABEL_ID, f)
+
+        with open(output_dir + '/' + 'baselineREF.' + which, 'w') as f:
+            f.write("Feature Vector is of Size: %s\n"%(len(FEATURE_MAP)))
+         
+         
+
+        if BASELINE:  
+            with open(output_dir + '/' + 'FEATURE_MAP.' + which + '.pckl', 'w') as f:
+                cPickle.dump(FEATURE_MAP, f)
     
     
     
