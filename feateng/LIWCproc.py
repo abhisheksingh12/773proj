@@ -3,8 +3,8 @@ import re,pickle,sys,traceback
 
 class LIWCproc:
     
-    def __init__(self,pathToPickle,readFromFile,pathToLIWC):
-        if readFromFile:
+    def __init__(self,pathToPickle,pathToLIWC=None):
+        if pathToLIWC != None:
             
             file_h = open(pathToLIWC,'r')
             startState = True
@@ -78,6 +78,7 @@ class LIWCproc:
                         tmp_dict[parts[0]].append(categoryDict[part])
                         
             del categoryDict
+            file_h.close()
             self.LIWC = {"fullMatch" : fullMatchDict, "partialMatch" : partialMatchDict }    
             pickle.dump(self.LIWC, open(pathToPickle,"wb"))
         else:
@@ -101,6 +102,29 @@ class LIWCproc:
                     return self.LIWC["partialMatch"][key]
             
             return []
+    def tag(self,word):
+        """
+        I am assumming if there is a full match
+        then just return the categories of the 
+        full match, otherwise return the categories
+        in a partial match
+        
+        NOTE: Not dealing with multiple matches
+        """
+        categories = []
+        if word in self.LIWC["fullMatch"]:
+            categories = self.LIWC["fullMatch"][word]
+        else:
+            for key in self.LIWC["partialMatch"]:
+                part_word = re.sub(r'\*', "", key)
+                if part_word in word:
+                    categories = self.LIWC["partialMatch"][key]
+        
+        result = []
+        for cat in categories:
+            result.append(word+"_"+cat.upper())
+        
+        return result
         
         
 if __name__ == "__main__":
@@ -113,23 +137,32 @@ if __name__ == "__main__":
         #          'False': False}[sys.argv[2]]
 
         if len(sys.argv) == 4:
-            readFromFile = True
+            
             resource = sys.argv[2]
             word = sys.argv[3]
         else:
-            readFromFile = False
+            
             resource = None
             word = sys.argv[2]
             
             
-        ling_res = LIWCproc(pickle_f,readFromFile,resource)
+        ling_res = LIWCproc(pickle_f,resource)
         categoryList = ling_res.inquire(word)
         
-        str = "%s\t"%word
+        string = "%s\t"%word
         for category in categoryList:
-            str += category+"\t"
-        str = str[:-2]+"\n"
-        sys.stdout.write(str)
+            string += category+"\t"
+        string = string[:-2]+"\n"
+        sys.stdout.write(string)
+        
+        """
+        ERASEME
+        |
+        |
+        V
+        """
+        tmp = str(ling_res.tag(word))
+        sys.stdout.write(tmp)
 
     except:
         print ('Usage: pickle_path path_to_LIWC_resource word \nor\n'+\

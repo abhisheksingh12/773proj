@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python2.7
 import sys,pickle,traceback
 
 global DEBUG
@@ -8,12 +8,12 @@ DEBUG = False
 
 class SUBJCLUESproc:
     
-    def __init__(self,pathToPickle,readFromFile,pathToSubjclues):
+    def __init__(self,pathToPickle,pathToSubjclues=None):
         
         if DEBUG:
             self.DEBUGcounter = 0
         
-        if readFromFile:
+        if pathToSubjclues != None:
             
             stemmedDict = {}
             tokenDict   = {}
@@ -72,6 +72,7 @@ class SUBJCLUESproc:
                 
                 final_dict[key][pos]={'type':tmp_dic['type'],'priorpolarity':tmp_dic['priorpolarity']}                
                 del tmp_dic
+                file_h.close()
             self.SUBJCLUES = {'stemmed':stemmedDict,'token':tokenDict}
             pickle.dump(self.SUBJCLUES, open(pathToPickle,"wb"))
         else:
@@ -105,12 +106,82 @@ class SUBJCLUESproc:
         if tmp_dic == None:
             return []
         else:
+            
             if word_pos in tmp_dic: 
                 return [tmp_dic[word_pos]['type'],tmp_dic[word_pos]['priorpolarity']]
             else:
                 return []
             
+    def tagWITHOUTPOS(self,word):
+        """
+        I am looking for a match in the token dict
+        first if I cannot find a match then I look
+        in the stemmed dict.
         
+        NOTE: 
+        -Not dealing with multiple matches
+        matches in both the token and the stemmed dicts
+        
+        -If the POS tag does not match, I am not
+        returning anything even though the word 
+        might be in the resource
+        
+        RETURNING a list in the following order
+        [type,pos,priorpolarity]
+        """
+        tmp_dic = None
+        if word in self.SUBJCLUES['token']:
+            tmp_dic = self.SUBJCLUES['token'][word]
+        else:
+            for key in self.SUBJCLUES['stemmed']:
+                if key in word:
+                    tmp_dic = self.SUBJCLUES['stemmed'][key]
+                    break
+        if tmp_dic == None:
+            return []
+        else:
+            if len(tmp_dic)==1:
+                key = tmp_dic.keys()[0]
+                return [word+"_"+tmp_dic[key]['type'].upper(),word+"_"+tmp_dic[key]['priorpolarity'].upper()]
+            else:
+                return []
+            
+        
+    def inquireWITHOUTPOS(self,word):
+        """
+        I am looking for a match in the token dict
+        first if I cannot find a match then I look
+        in the stemmed dict.
+        
+        NOTE: 
+        -Not dealing with multiple matches
+        matches in both the token and the stemmed dicts
+        
+        -If the POS tag does not match, I am not
+        returning anything even though the word 
+        might be in the resource
+        
+        RETURNING a list in the following order
+        [type,pos,priorpolarity]
+        """
+        tmp_dic = None
+        if word in self.SUBJCLUES['token']:
+            tmp_dic = self.SUBJCLUES['token'][word]
+        else:
+            for key in self.SUBJCLUES['stemmed']:
+                if key in word:
+                    tmp_dic = self.SUBJCLUES['stemmed'][key]
+                    break
+        if tmp_dic == None:
+            return []
+        else:
+            if len(tmp_dic)==1:
+                key = tmp_dic.keys()[0]
+                return [tmp_dic[key]['type'].upper(),tmp_dic[key]['priorpolarity'].upper()]
+            else:
+                return []
+            
+      
             
 if __name__ == "__main__":
     
@@ -118,26 +189,35 @@ if __name__ == "__main__":
         pickle_f = sys.argv[1]
         
         if len(sys.argv) == 5:
-            readFromFile = True
+            
             resource = sys.argv[2]
             word = sys.argv[3]
             pos = sys.argv[4]
         else: #len(sys.argv) == 3:
-            readFromFile = False
+            
             resource = None
             word     = sys.argv[2]
             pos     = sys.argv[3]
         
-        subCl = SUBJCLUESproc(pickle_f,readFromFile,resource)
+        subCl = SUBJCLUESproc(pickle_f,resource)
         
         info = subCl.inquire(word,pos)
         
-        str = "%s\t"%word
+        string = "%s\t"%word
         for category in info:
-            str += category+"\t"
+            string += category+"\t"
         
-        str = str[:-2]+"\n"
-        sys.stdout.write(str)
+        string = string[:-2]+"\n"
+        sys.stdout.write(string)
+        
+        """
+        ERASE ME
+        |
+        |
+        V
+        """
+        print str(subCl.inquireWITHOUTPOS(word))
+        
     except:
         print ('Usage: pickle_path path_to_SUBJCLUES_resource word \nor\n'+\
                'Usage: pickle_path word \n')

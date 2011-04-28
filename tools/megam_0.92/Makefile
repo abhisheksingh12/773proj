@@ -71,7 +71,7 @@ WITHDBM =dbm.cma -cclib -lmldbm -cclib -lndbm
 
 #WITHCLIBS =-I /usr/lib/ocaml/3.09.2/caml
 #WITHCLIBS =-I /usr/lib/ocaml/caml
-WITHCLIBS =-I /usr/local/Cellar/objective-caml/3.12.0/lib/ocaml/caml
+WITHCLIBS =-I /usr/lib/ocaml/caml
 
 ################ End of user's variables #####################
 
