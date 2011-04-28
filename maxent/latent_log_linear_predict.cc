@@ -34,7 +34,7 @@ bool predict_line(const string &line, const LatentLogLinearModel &m, ostream &ou
 int main(int argc, char *argv[])
 {
 	if (argc != 2) {
-		cerr << "Usage: " << argv[0] << " weights < input > output" << endl;
+		cerr << "Usage: " << argv[0] << " model < input > output" << endl;
 		return 1;
 	}
 
@@ -46,7 +46,8 @@ int main(int argc, char *argv[])
 	     << "path = " << argv[1] << " "
 	     << "label_count = " << m.label_count << " "
 	     << "feat_count = " << m.feat_count << " "
-	     << "latent_count = " << m.latent_count
+	     << "latent_count = " << m.latent_count << " "
+	     << "st = {h=" << m.st.h << ", y=" << m.st.y << ", hx=" << m.st.hx << ", hy=" << m.st.hy << ", xy=" << m.st.xy << ", hxy=" << m.st.hxy << "}"
 	     << endl;
 
 	string line;

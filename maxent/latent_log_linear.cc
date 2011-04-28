@@ -17,6 +17,15 @@ using namespace std;
 
 #define DEBUG 1
 
+static istream &getline_no_comment(istream &input, string &line)
+{
+	do
+		getline(input, line);
+	while (line.size() && line[0] == '#');
+	return input;
+}
+
+
 struct _pass_data
 {
 	_pass_data(const LLLMStruct &st,
@@ -50,10 +59,10 @@ struct _pass_data
 };
 
 static double _evaluate(void *instance, // user data
-			  const double *x, // current values of variables
-			  double *g, // put gradient vector here
-			  const int n, // number of variables
-			  const double step) // current step of line search
+			const double *x, // current values of variables
+			double *g, // put gradient vector here
+			const int n, // number of variables
+			const double step) // current step of line search
 {
 	const _pass_data &td = *static_cast<_pass_data *>(instance);
 	double lambda = td.lambda;
@@ -137,15 +146,15 @@ static size_t _test(const vector<DataPoint> &points, const double *x,
 }
 
 static int _progress(void *instance, // same as _evaluate
-		       const double *x, // same as _evaluate
-		       const double *g, // same as _evaluate
-		       const double fx, // objective
-		       const double xnorm, // norm of variables
-		       const double gnorm, // norm of gradient
-		       const double step, // line search step
-		       int n, // number of variables
-		       int k, // iteration count
-		       int ls) // number of evaluations called
+		     const double *x, // same as _evaluate
+		     const double *g, // same as _evaluate
+		     const double fx, // objective
+		     const double xnorm, // norm of variables
+		     const double gnorm, // norm of gradient
+		     const double step, // line search step
+		     int n, // number of variables
+		     int k, // iteration count
+		     int ls) // number of evaluations called
 {
         cerr << "it " << k
 	     << "\tfx=" << fx
@@ -205,103 +214,332 @@ static int _progress(void *instance, // same as _evaluate
 }
 
 
-void LatentLogLinearModel::load_line(const string &line, size_t h, size_t lineno)
+size_t LatentLogLinearModel::query_or_assign_feat_id(const string &feat_name)
 {
-	istringstream strin(line);
-
-	string feat_name;
-	strin >> feat_name;
-
-	// if (feat_id_map.count(feat_name))
-	// 	throw runtime_error("Duplicate feature at line " +
-	// 			    to_string(static_cast<long long>(lineno)) +
-	// 			    ": " + feat_name);
-	// assign feat_id
 	size_t feat_id;
 	if (feat_id_map.count(feat_name) == 0) {
 		feat_id = feat_id_map.size();
 		feat_id_map[feat_name] = feat_id;
 	} else
 		feat_id = feat_id_map[feat_name];
-	// read weights
-	for (size_t i = 0; i != label_count; ++i)
-		strin >> weights[i * feat_count * latent_count + h * feat_count + feat_id];
+	return feat_id;
 }
 
-static inline size_t _num_of_cols(const string &line)
+void LatentLogLinearModel::load_counts(istream &input)
 {
+	string line;
+	getline_no_comment(input, line);
+	try {
+		label_count = stoi(line);
+	} catch (invalid_argument &e) {
+		throw runtime_error("can't read label count");
+	}
+
+	getline_no_comment(input, line);
+	try {
+		latent_count = stoi(line);
+	} catch (invalid_argument &e) {
+		throw runtime_error("can't read latent count");
+	}
+
+	getline_no_comment(input, line);
+	try {
+		feat_count = stoi(line);
+	} catch (invalid_argument &e) {
+		throw runtime_error("can't read feat count");
+	}
+}
+
+void LatentLogLinearModel::load_st(istream &input)
+{
+	string line;
+	getline_no_comment(input, line);
+	if (line.size() != 11)
+		throw runtime_error("invalid st line: " + line);
+	for (size_t i = 0; i < 11; i += 2)
+		if (line[i] != '0' && line[i] != '1')
+			throw runtime_error("invalid st line: " + line);
+	for (size_t i = 1; i < 11; i += 2)
+		if (line[i] != ' ' && line[i] != '\t')
+			throw runtime_error("invalid st line: " + line);
 	istringstream strin(line);
-	size_t ret = 0;
-	string buf;
-	while (strin >> buf)
-		++ret;
-	return ret;
+	strin >> st.h >> st.y >> st.hx >> st.hy >> st.xy >> st.hxy;
+}
+
+void LatentLogLinearModel::load_w_h(istream &input)
+{
+	if (st.h) {
+		string line;
+		getline_no_comment(input, line);
+		istringstream strin(line);
+		for (size_t i = 0; i < latent_count; ++i)
+			strin >> w[I_H][i];
+	}
+}
+
+void LatentLogLinearModel::load_w_y(istream &input)
+{
+	if (st.y) {
+		string line;
+		getline_no_comment(input, line);
+		istringstream strin(line);
+		for (size_t i = 0; i < label_count; ++i)
+			strin >> w[I_Y][i];
+	}
+}
+
+void LatentLogLinearModel::load_w_hx(istream &input)
+{
+	if (st.hx) {
+		string line;
+		for (size_t i = 0; i < feat_count; ++i) {
+			getline_no_comment(input, line);
+			istringstream strin(line);
+
+			string feat_name;
+			strin >> feat_name;
+
+			size_t feat_id = query_or_assign_feat_id(feat_name);
+
+			for (size_t j = 0; j < latent_count; ++j)
+				strin >> w[I_HX][j * feat_count + feat_id];
+		}
+	}
+}
+
+void LatentLogLinearModel::load_w_hy(istream &input)
+{
+	if (st.hy) {
+		string line;
+		for (size_t i = 0; i < latent_count; ++i) {
+			getline_no_comment(input, line);
+			istringstream strin(line);
+			for (size_t j = 0; j < label_count; ++j)
+				strin >> w[I_HY][j * latent_count + i];
+		}
+	}
+}
+
+void LatentLogLinearModel::load_w_xy(istream &input)
+{
+	if (st.xy) {
+		string line;
+		for (size_t i = 0; i < feat_count; ++i) {
+			getline_no_comment(input, line);
+			istringstream strin(line);
+
+			string feat_name;
+			strin >> feat_name;
+
+			size_t feat_id = query_or_assign_feat_id(feat_name);
+
+			for (size_t j = 0; j < label_count; ++j)
+				strin >> w[I_XY][j * feat_count + feat_id];
+		}
+	}
+}
+
+void LatentLogLinearModel::load_w_hxy(istream &input)
+{
+	if (st.hxy) {
+		string line;
+		size_t width = feat_count * latent_count;
+		for (size_t i = 0; i < latent_count; ++i)
+			for (size_t j = 0; j < feat_count; ++j) {
+				getline_no_comment(input, line);
+				istringstream strin(line);
+
+				string feat_name;
+				strin >> feat_name;
+
+				size_t feat_id = query_or_assign_feat_id(feat_name);
+
+				for (size_t k = 0; k < label_count; ++k)
+					strin >> w[I_HXY][k * width + i * feat_count + feat_id];
+			}
+	}
 }
 
 void LatentLogLinearModel::load_model(istream &input)
 {
-	string line;
-	getline(input, line);
-	try {
-		latent_count = stoi(line);
-	} catch (invalid_argument &e) {
-		cerr << "Error: first line of the model is not latent_count" << endl;
-		exit(1);
+	load_counts(input);
+	load_st(input);
+	set_weight_size(compute_weight_size());
+	load_w_h(input);
+	load_w_y(input);
+	load_w_hx(input);
+	load_w_hy(input);
+	load_w_xy(input);
+	load_w_hxy(input);
+	// make sure there is an id for **BIAS**
+	query_or_assign_feat_id("**BIAS**");
+}
+
+void LatentLogLinearModel::dump_counts(ostream &output) const
+{
+	output << "# label\n"
+	       << label_count << '\n'
+	       << "# latent\n"
+	       << latent_count << '\n'
+	       << "# feat\n"
+	       << feat_count << '\n';
+}
+
+void LatentLogLinearModel::dump_st(ostream &output) const
+{
+	output << "# h y hx hy xy hxy\n"
+	       << st.h << ' '
+	       << st.y << ' '
+	       << st.hx << ' '
+	       << st.hy << ' '
+	       << st.xy << ' '
+	       << st.hxy << '\n';
+}
+
+void LatentLogLinearModel::dump_w_h(ostream &output) const
+{
+	if (st.h) {
+		output << "# w_h\n";
+		for (size_t i = 0; i != latent_count; ++i)
+			output << (i == 0 ? "" : " ")
+			       << w[I_H][i];
+		output << '\n';
 	}
+}
 
-	streampos begin = input.tellg();
+void LatentLogLinearModel::dump_w_y(ostream &output) const
+{
+	if (st.y) {
+		output << "# w_y\n";
+		for (size_t i = 0; i != label_count; ++i)
+			output << (i == 0 ? "" : " ")
+			       << w[I_Y][i];
+		output << '\n';
+	}
+}
 
-	// first pass: obtain `label_count` and `feat_count`
-	getline(input, line);
-	label_count = _num_of_cols(line) - 1;
-	feat_count = 1;
-	while (getline(input, line))
-		++feat_count;
-	if (feat_count % latent_count != 0)
-		throw runtime_error("Wrong number of features");
-	feat_count /= latent_count;
-	weights.resize(label_count * feat_count * latent_count);
-
-	// second pass: read weights and build feat_id_map
-	input.clear();
-	input.seekg(begin);
-	feat_id_map.clear();
-	size_t lineno = 2;
-	for (size_t i = 0; i != latent_count; ++i) {
-		for (size_t j = 0; j != feat_count; ++j) {
-			getline(input, line);
-			load_line(line, i, lineno++);
+void LatentLogLinearModel::dump_w_hx(ostream &output) const
+{
+	if (st.hx) {
+		output << "# w_hx\n";
+		// always output bias first
+		output << "**BIAS**";
+		size_t bias_feat_id = feat_id_map.find("**BIAS**")->second;
+		for (size_t i = 0; i != latent_count; ++i)
+			output << (i == 0 ? '\t' : ' ')
+			       << w[I_HX][i * feat_count + bias_feat_id];
+		output << '\n';
+		// other features
+		for (auto i = feat_id_map.begin(); i != feat_id_map.end(); ++i) {
+			if (i->second == bias_feat_id)
+				continue;
+			output << i->first;
+			for (size_t j = 0; j != latent_count; ++j)
+				output << (j == 0 ? '\t' : ' ')
+				       << w[I_HX][j * feat_count + i->second];
+			output << '\n';
 		}
 	}
 }
 
-void LatentLogLinearModel::dump_model(ostream &output)
+void LatentLogLinearModel::dump_w_hy(ostream &output) const
 {
-	size_t width = latent_count * feat_count;
-	output << latent_count << '\n';
-	for (size_t h = 0; h != latent_count; ++h) {
+	if (st.hy) {
+		output << "# w_hy\n";
+		for (size_t i = 0; i != latent_count; ++i) {
+			for (size_t j = 0; j != label_count; ++j)
+				output << (j == 0 ? "" : " ")
+				       << w[I_HY][j * latent_count + i];
+			output << '\n';
+		}
+	}
+}
+
+void LatentLogLinearModel::dump_w_xy(ostream &output) const
+{
+	if (st.xy) {
+		output << "# w_xy\n";
 		// always output bias first
 		output << "**BIAS**";
-		size_t bias_feat_id = feat_id_map["**BIAS**"];
+		size_t bias_feat_id = feat_id_map.find("**BIAS**")->second;
 		for (size_t i = 0; i != label_count; ++i)
 			output << (i == 0 ? '\t' : ' ')
-			       << setiosflags(ios_base::fixed) << setprecision(20)
-			       << weights[i * width + h * feat_count + bias_feat_id];
+			       << w[I_XY][i * feat_count + bias_feat_id];
 		output << '\n';
-		// temporarily remove bias from feat_id_map
-		feat_id_map.erase("**BIAS**");
 		// other features
 		for (auto i = feat_id_map.begin(); i != feat_id_map.end(); ++i) {
+			if (i->second == bias_feat_id)
+				continue;
 			output << i->first;
 			for (size_t j = 0; j != label_count; ++j)
 				output << (j == 0 ? '\t' : ' ')
-				       << setiosflags(ios_base::fixed) << setprecision(20)
-				       << weights[j * width + h * feat_count + i->second];
+				       << w[I_XY][j * feat_count + i->second];
 			output << '\n';
 		}
-		// restore bias to feat_id_map
-		feat_id_map["**BIAS**"] = bias_feat_id;
 	}
+}
+
+void LatentLogLinearModel::dump_w_hxy(ostream &output) const
+{
+	if (st.hxy) {
+		output << "# w_hxy\n";
+		size_t width = feat_count * latent_count;
+		for (size_t h = 0; h != latent_count; ++h) {
+			// always output bias first
+			output << "**BIAS**";
+			size_t bias_feat_id = feat_id_map.find("**BIAS**")->second;
+			for (size_t i = 0; i != label_count; ++i)
+				output << (i == 0 ? '\t' : ' ')
+				       << w[I_HXY][i * width + h * feat_count + bias_feat_id];
+			output << '\n';
+			// other features
+			for (auto i = feat_id_map.begin(); i != feat_id_map.end(); ++i) {
+				if (i->second == bias_feat_id)
+					continue;
+				output << i->first;
+				for (size_t j = 0; j != label_count; ++j)
+					output << (j == 0 ? '\t' : ' ')
+					       << w[I_HXY][j * width + h * feat_count + i->second];
+				output << '\n';
+			}
+		}
+	}
+}
+
+void LatentLogLinearModel::dump_model(ostream &output) const
+{
+	output << setiosflags(ios_base::fixed) << setprecision(20);
+	dump_counts(output);
+	dump_st(output);
+	dump_w_h(output);
+	dump_w_y(output);
+	dump_w_hx(output);
+	dump_w_hy(output);
+	dump_w_xy(output);
+	dump_w_hxy(output);
+}
+
+size_t LatentLogLinearModel::compute_weight_size() const
+{
+	size_t n = 0;
+	if (st.h) n += latent_count;
+	if (st.y) n += label_count;
+	if (st.hx) n += latent_count * feat_count;
+	if (st.hy) n += latent_count * label_count;
+	if (st.xy) n += feat_count * label_count;
+	if (st.hxy) n += feat_count * latent_count * label_count;
+	return n;
+}
+
+void LatentLogLinearModel::set_weight_size(size_t n)
+{
+	weights.resize(n);
+	w[I_H] = weights.begin();
+	w[I_Y] = w[I_H] + (st.h ? latent_count : 0);
+	w[I_HX] = w[I_Y] + (st.y ? label_count : 0);
+	w[I_HY] = w[I_HX] + (st.hx ? latent_count * feat_count : 0);
+	w[I_XY] = w[I_HY] + (st.hy ? latent_count * label_count : 0);
+	w[I_HXY] = w[I_XY] + (st.xy ? label_count * feat_count : 0);
 }
 
 void LatentLogLinearModel::train(const DataSet &data, const LLLMStruct &st,
@@ -314,7 +552,15 @@ void LatentLogLinearModel::train(const DataSet &data, const LLLMStruct &st,
 	feat_id_map = data.feat_id_map;
 
 	// compute parameter dimension
-	size_t n = label_count * feat_count * latent_count;
+	size_t n = compute_weight_size();
+
+	{
+		set_weight_size(n);
+		for (size_t i = 0; i != n; ++i)
+			weights[i] = i;
+	}
+
+	return;
 
 	// parameter stoarge during optimization
 	double *x = lbfgs_malloc(n);
@@ -335,7 +581,7 @@ void LatentLogLinearModel::train(const DataSet &data, const LLLMStruct &st,
 	if (ret)
 		cerr << "Warning: lbfgs terminated with error code " << ret << endl;
 	// store weights
-	weights.resize(n);
+	set_weight_size(n);
 	if (data.dev.size() && td.best_dev_correst) {
 		cerr << "using best weights on dev (de_err="
 		     << 1 - static_cast<double>(td.best_dev_correst) / data.dev.size()
@@ -373,9 +619,24 @@ void LatentLogLinearModel::compute_scores(const sparse_t &sparse, vec_t &result)
 
 	for (size_t i = 0; i != label_count; ++i) {
 		result[i] = 0;
+		double without_h = 0;
+		if (st.y)
+			without_h += w[I_Y][i];
+		if (st.xy)
+			without_h += sv_dot_prod(sparse.begin(), sparse.end(),
+						 w[I_XY] + i * feat_count);
 		for (size_t j = 0; j != latent_count; ++j) {
-			double psi = sv_dot_prod(sparse.begin(), sparse.end(),
-						 weights.begin() + i * width + j * feat_count);
+			double psi = without_h;
+			if (st.h)
+				psi += w[I_H][j];
+			if (st.hx)
+				psi += sv_dot_prod(sparse.begin(), sparse.end(),
+						   w[I_HX] + j * feat_count);
+			if (st.hy)
+				psi += w[I_HY][i * latent_count + j];
+			if (st.hxy)
+				psi += sv_dot_prod(sparse.begin(), sparse.end(),
+						   w[I_HXY] + i * width + j * feat_count);
 			result[i] += exp(psi);
 		}
 	}
