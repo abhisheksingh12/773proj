@@ -69,24 +69,46 @@ static double _evaluate(void *instance, // user data
 	size_t label_count = td.label_count;
 	size_t feat_count = td.feat_count;
 	size_t latent_count = td.latent_count;
-	size_t width = latent_count * feat_count;
-	// n = latent_count * feat_count * label_count
 	const DataSet &data = td.data;
+	const LLLMStruct &st = td.st;
+
+	size_t width = latent_count * feat_count;
+
+	size_t offset_h = 0;
+	size_t offset_y = offset_h + (st.h ? latent_count : 0);
+	size_t offset_hx = offset_y + (st.y ? label_count : 0);
+	size_t offset_hy = offset_hx + (st.hx ? latent_count * feat_count : 0);
+	size_t offset_xy = offset_hy + (st.hy ? latent_count * label_count : 0);
+	size_t offset_hxy = offset_xy + (st.xy ? label_count * feat_count : 0);
 
 	// initialize with L2 regularization terms
 	double f = 0.5 * lambda * vv_dot_prod(x, x + n, x);
 	vv_mul_by(g, x, x + n, lambda);
-	// per-example sum
+	// Per-example sum
 	for (auto i = data.train.begin(); i != data.train.end(); ++i) {
 		// per-label score \sum_h exp(psi(x, y, h))
 
 		// exp(psi(x, y, h))
 		vec_t exp_psi(label_count * latent_count);
 		for (size_t j = 0; j < label_count; ++j) {
+			double without_h = 0;
+			if (st.y)
+				without_h += x[offset_y + j];
+			if (st.xy)
+				without_h += sv_dot_prod(i->sparse.begin(), i->sparse.end(),
+							 x + offset_xy + j * feat_count);
 			for (size_t h = 0; h < latent_count; ++h) {
-				double psi = sv_dot_prod(i->sparse.begin(),
-							 i->sparse.end(),
-							 x + j * width + h * feat_count);
+				double psi = without_h;
+				if (st.h)
+					psi += x[offset_h + h];
+				if (st.hx)
+					psi += sv_dot_prod(i->sparse.begin(), i->sparse.end(),
+							   x + offset_hx + h * feat_count);
+				if (st.hy)
+					psi += x[offset_hy + j * latent_count + h];
+				if (st.hxy)
+					psi += sv_dot_prod(i->sparse.begin(), i->sparse.end(),
+							   x + offset_hxy + j * width + h * feat_count);
 				exp_psi[j * latent_count + h] = exp(psi);
 			}
 		}
@@ -99,11 +121,30 @@ static double _evaluate(void *instance, // user data
 		f -= log(sum_exp_psi_ref);
 
 		// for each h, - exp_psi(x,y,h)/sum_exp_psi_ref * \nabla psi(x,y,h)
-		for (size_t h = 0; h < latent_count; ++h)
-			vs_sub_eq_mul_by(g + ref_label * width + h * feat_count,
-					 i->sparse.begin(),
-					 i->sparse.end(),
-					 exp_psi[ref_label * latent_count + h] / sum_exp_psi_ref);
+		for (size_t h = 0; h < latent_count; ++h) {
+			double ratio = exp_psi[ref_label * latent_count + h] / sum_exp_psi_ref;
+			if (st.h)
+				g[offset_h + h] -= ratio;
+			if (st.y)
+				g[offset_y + ref_label] -= ratio;
+			if (st.hx)
+				vs_sub_eq_mul_by(g + offset_hx + h * feat_count,
+						 i->sparse.begin(),
+						 i->sparse.end(),
+						 ratio);
+			if (st.hy)
+				g[offset_hy + ref_label * latent_count + h] -= ratio;
+			if (st.xy)
+				vs_sub_eq_mul_by(g + offset_xy + ref_label * feat_count,
+						 i->sparse.begin(),
+						 i->sparse.end(),
+						 ratio);
+			if (st.hxy)
+				vs_sub_eq_mul_by(g + offset_hxy + ref_label * width + h * feat_count,
+						 i->sparse.begin(),
+						 i->sparse.end(),
+						 ratio);
+		}
 
 		// update Z (partition function) terms
 		// Z = \sum_{y,h} exp(psi(x,y,h))
@@ -114,28 +155,70 @@ static double _evaluate(void *instance, // user data
 		f += log(Z);
 		// for each (y,h), + exp_psi(x,y,h)/Z * \nabla psi(x,y,h)
 		for (size_t j = 0; j < label_count; ++j)
-			for (size_t h = 0; h < latent_count; ++h)
-				vs_add_eq_mul_by(g + j * width + h * feat_count,
-						 i->sparse.begin(),
-						 i->sparse.end(),
-						 exp_psi[j * latent_count + h] / Z);
+			for (size_t h = 0; h < latent_count; ++h) {
+				double ratio = exp_psi[j * latent_count + h] / Z;
+				if (st.h)
+					g[offset_h + h] += ratio;
+				if (st.y)
+					g[offset_y + j] += ratio;
+				if (st.hx)
+					vs_add_eq_mul_by(g + offset_hx + h * feat_count,
+							 i->sparse.begin(),
+							 i->sparse.end(),
+							 ratio);
+				if (st.hy)
+					g[offset_hy + j * latent_count + h] += ratio;
+				if (st.xy)
+					vs_add_eq_mul_by(g + offset_xy + j * feat_count,
+							 i->sparse.begin(),
+							 i->sparse.end(),
+							 ratio);
+				if (st.hxy)
+					vs_add_eq_mul_by(g + offset_hxy + j * width + h * feat_count,
+							 i->sparse.begin(),
+							 i->sparse.end(),
+							 ratio);
+			}
 	}
 
 	return f;
 }
 
 static size_t _test(const vector<DataPoint> &points, const double *x,
-		    size_t feat_count, size_t label_count, size_t latent_count)
+		    size_t feat_count, size_t label_count, size_t latent_count,
+		    const LLLMStruct &st)
 {
+	size_t offset_h = 0;
+	size_t offset_y = offset_h + (st.h ? latent_count : 0);
+	size_t offset_hx = offset_y + (st.y ? label_count : 0);
+	size_t offset_hy = offset_hx + (st.hx ? latent_count * feat_count : 0);
+	size_t offset_xy = offset_hy + (st.hy ? latent_count * label_count : 0);
+	size_t offset_hxy = offset_xy + (st.xy ? label_count * feat_count : 0);
+
 	size_t correct = 0;
 	size_t width = feat_count * latent_count;
 	vec_t scores(label_count);
 	for (auto i = points.begin(); i != points.end(); ++i) {
 		for (size_t j = 0; j != label_count; ++j) {
 			scores[j] = 0;
-			for (size_t h = 0; h != latent_count; ++h) {
-				double psi = sv_dot_prod(i->sparse.begin(), i->sparse.end(),
-							 x + j * width + h * feat_count);
+			double without_h = 0;
+			if (st.y)
+				without_h += x[offset_y + j];
+			if (st.xy)
+				without_h += sv_dot_prod(i->sparse.begin(), i->sparse.end(),
+							 x + offset_xy + j * feat_count);
+			for (size_t h = 0; h < latent_count; ++h) {
+				double psi = without_h;
+				if (st.h)
+					psi += x[offset_h + h];
+				if (st.hx)
+					psi += sv_dot_prod(i->sparse.begin(), i->sparse.end(),
+							   x + offset_hx + h * feat_count);
+				if (st.hy)
+					psi += x[offset_hy + j * latent_count + h];
+				if (st.hxy)
+					psi += sv_dot_prod(i->sparse.begin(), i->sparse.end(),
+							   x + offset_hxy + j * width + h * feat_count);
 				scores[j] += exp(psi);
 			}
 		}
@@ -166,6 +249,7 @@ static int _progress(void *instance, // same as _evaluate
 	size_t feat_count = td.feat_count;
 	size_t latent_count = td.latent_count;
 	const DataSet &data = td.data;
+	const LLLMStruct &st = td.st;
 
 // #if DEBUG
 // 	double train_correct = _test(data.train, x, feat_count, label_count, latent_count);
@@ -173,7 +257,7 @@ static int _progress(void *instance, // same as _evaluate
 // #endif
 
 	if (data.dev.size()) {
-		double dev_correct = _test(data.dev, x, feat_count, label_count, latent_count);
+		double dev_correct = _test(data.dev, x, feat_count, label_count, latent_count, st);
 		cerr << "\tde_err=" << (data.dev.size() - dev_correct) / data.dev.size();
 		if (dev_correct > td.best_dev_correst) {
 			td.best_dev_correst = dev_correct;
@@ -553,14 +637,6 @@ void LatentLogLinearModel::train(const DataSet &data, const LLLMStruct &st,
 
 	// compute parameter dimension
 	size_t n = compute_weight_size();
-
-	{
-		set_weight_size(n);
-		for (size_t i = 0; i != n; ++i)
-			weights[i] = i;
-	}
-
-	return;
 
 	// parameter stoarge during optimization
 	double *x = lbfgs_malloc(n);
