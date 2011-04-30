@@ -2,6 +2,8 @@
 #include "vec.hh"
 
 #include <cmath>
+#include <cstdlib>
+#include <ctime>
 #include <algorithm>
 #include <numeric>
 #include <ios>
@@ -716,13 +718,17 @@ void LatentLogLinearModel::train(const DataSet &data, const LLLMStruct &st,
 
 	// parameter stoarge during optimization
 	double *x = lbfgs_malloc(n);
+	// random init weights
+	srand(time(NULL));
+	for (size_t i = 0; i < n; ++i)
+		x[i] = rand() % 2 - 1;
 	// information needed for _evaluate
 	_pass_data td(st, lambda, label_count, feat_count, latent_count, data, n);
 
 	// TODO: user-supplied optimization parameters
 	lbfgs_parameter_t params;
 	lbfgs_parameter_init(&params);
-	params.max_iterations = 150;
+	params.max_iterations = 1500;
 	// actual optimization
 	int ret = lbfgs(n, // num of vars
 			x, // storage of vars
