@@ -108,14 +108,15 @@ struct _pass_data
 		   size_t label_count,
 		   size_t feat_count,
 		   size_t latent_count,
-		   const DataSet &data) :
+		   const DataSet &data,
+		   size_t n) :
 		st(st),
 		lambda(lambda),
 		label_count(label_count),
 		feat_count(feat_count),
 		latent_count(latent_count),
 		best_dev_correst(0),
-		best_x(label_count * feat_count),
+		best_x(n),
 		data(data) {
 	}
 
@@ -716,11 +717,12 @@ void LatentLogLinearModel::train(const DataSet &data, const LLLMStruct &st,
 	// parameter stoarge during optimization
 	double *x = lbfgs_malloc(n);
 	// information needed for _evaluate
-	_pass_data td(st, lambda, label_count, feat_count, latent_count, data);
+	_pass_data td(st, lambda, label_count, feat_count, latent_count, data, n);
 
 	// TODO: user-supplied optimization parameters
 	lbfgs_parameter_t params;
 	lbfgs_parameter_init(&params);
+	params.max_iterations = 150;
 	// actual optimization
 	int ret = lbfgs(n, // num of vars
 			x, // storage of vars
