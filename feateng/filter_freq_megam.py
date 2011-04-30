@@ -4,9 +4,8 @@
 import sys
 import collections
 
-def feat_of_line(line):
-    label, feats = line.split(None, 1)
-    return label, feats.split()
+from common import feat_of_line
+
 
 try:
     min_freq = int(sys.argv[1])

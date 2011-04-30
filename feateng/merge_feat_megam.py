@@ -3,8 +3,9 @@
 """Merge feature files"""
 
 import sys
-
 from itertools import izip
+
+from common import feat_of_line
 
 
 def merge_feats(feats):
@@ -15,11 +16,6 @@ def merge_feats(feats):
     label = list(labels)[0]
     feat = list(reduce(set.union, [f for _,f in feats], set()))
     return label, feat
-
-
-def feat_of_line(line):
-    label, feats = line.split(None, 1)
-    return label, feats.split()
 
 
 if __name__ == '__main__':

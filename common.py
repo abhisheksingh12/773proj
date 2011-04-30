@@ -1,4 +1,4 @@
-__ALL__ = ["group_by", "lazy_load_dyads", "write_dyads", "IncrCounter"]
+__ALL__ = ["group_by", "lazy_load_dyads", "write_dyads", "IncrCounter", "feat_of_line"]
 
 def group_by(items, key):
     """Group and yield sorted items by key
@@ -71,3 +71,9 @@ class IncrCounter:
 
     def __getitem__(self, anInteger):
         return self.rev_map[anInteger]
+
+
+def feat_of_line(line):
+    label, feats = line.split(None, 1)
+    return label, feats.split()
+
