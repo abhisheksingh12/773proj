@@ -74,6 +74,15 @@ class IncrCounter:
 
 
 def feat_of_line(line):
-    label, feats = line.split(None, 1)
+    sp = line.split(None, 1)
+    if len(sp) == 1:
+        sp.append('')
+    label, feats = sp
     return label, feats.split()
 
+
+def ngrams(sent, n):
+    N = len(sent)
+    for i in range(N):
+        if i + n <= N:
+            yield tuple(sent[i:i+n])
