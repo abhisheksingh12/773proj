@@ -1,0 +1,15 @@
+research/py-cfg/Changelog.txt
+
+Previous CVS tag: v20090827
+
+27th August 2009: 
+
+I've updated the program to use the TR1 unordered_map and
+unordered_set, instead of the older SGI hash_map and hash_set
+routines.  If for some reason you have to use an older compiler, copy
+utility-old.h to utility.h.
+
+I also found and fixed a potential bug in the deallocation routines;
+if an adapted non-terminal ever completely disappears from all 
+sampled parse trees, it could result a dangling pointer to deleted
+memory.
