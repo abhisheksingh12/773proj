@@ -6,9 +6,14 @@ import cPickle
 import feat_writer
 import common
 
+import nltk.stem
+
 # must use integers as labels since megam requires it!
 LABEL_ID = common.IncrCounter()
 PADDING = [(None, None, None, [])]
+STEM = False
+
+stem = nltk.stem.PorterStemmer().stem
 
 
 def bigrams(sent, window):
@@ -44,6 +49,8 @@ def iter_features(docs, window_back=1, window_forward=1, ngram_window=5):
     """
     global LABEL_ID
     global PADDING
+    global STEM
+
     for doc in docs:
         if type(doc) is not list:
             doc = list(doc)
@@ -54,6 +61,7 @@ def iter_features(docs, window_back=1, window_forward=1, ngram_window=5):
         feat_doc = []
         for i in range(window_back, len(doc) - window_forward):
             _, role, code, unit = doc[i]
+            if STEM: unit = map(stem, unit)
             # integer label; make megam happy
             label = LABEL_ID(code)
             # add features
@@ -69,6 +77,7 @@ def iter_features(docs, window_back=1, window_forward=1, ngram_window=5):
 
             for j in range(1, window_back+1):
                 _, _, _, unit = doc[i-j]
+                if STEM: unit = map(stem, unit)
                 feats.update(('BACK_{}_UNIGRAM_{}'.format(j, w)
                               for w in unit))
                 feats.update(('BACK_{}_BIGRAM_{}/{}'.format(j, *w)
@@ -79,6 +88,7 @@ def iter_features(docs, window_back=1, window_forward=1, ngram_window=5):
                               for w in fourgrams(['<s>', '<s>', '<s>'] + unit + ['</s>'], ngram_window)))
             for j in range(1, window_forward+1):
                 _, _, _, unit = doc[i+j]
+                if STEM: unit = map(stem, unit)
                 feats.update(('FORWARD_{}_UNIGRAM_{}'.format(j, w)
                               for w in unit))
                 feats.update(('FORWARD_{}_BIGRAM_{}/{}'.format(j, *w)
@@ -103,8 +113,10 @@ if __name__ == '__main__':
         window_back = int(sys.argv[6])
         window_forward = int(sys.argv[7])
         ngram_window = int(sys.argv[8])
+
+        STEM = int(sys.argv[9])
     except:
-        print 'Usage: {} which(=megam|crfsuite) out_dir train dev test window_back window_forward ngram_window'.format(sys.argv[0])
+        print 'Usage: {} which(=megam|crfsuite) out_dir train dev test window_back window_forward ngram_window stem'.format(sys.argv[0])
         exit(1)
 
     for (purpose, path) in zip(["train", "dev", "test"], [train_in, dev_in, test_in]):
